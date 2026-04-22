@@ -17,8 +17,6 @@ import (
     "go.mongodb.org/mongo-driver/mongo"
 )
 
-// fallbackAvatar is now in user.go - DO NOT declare it here
-
 type CreatePostRequest struct {
     Content  string   `json:"content" binding:"required"`
     Media    []string `json:"media"`
@@ -163,17 +161,17 @@ func GetUserPosts(c *gin.Context) {
     postsColl := database.Client.Database("coded").Collection("posts")
 
     pipeline := mongo.Pipeline{
-        {{"$match", bson.D{{"userId", userID}}}},
-        {{"$sort", bson.D{{"createdAt", -1}}}},
-        {{"$lookup", bson.D{
-            {"from", "users"},
-            {"localField", "userId"},
-            {"foreignField", "_id"},
-            {"as", "user"},
+        {{Key: "$match", Value: bson.D{{Key: "userId", Value: userID}}}},
+        {{Key: "$sort", Value: bson.D{{Key: "createdAt", Value: -1}}}},
+        {{Key: "$lookup", Value: bson.D{
+            {Key: "from", Value: "users"},
+            {Key: "localField", Value: "userId"},
+            {Key: "foreignField", Value: "_id"},
+            {Key: "as", Value: "user"},
         }}},
-        {{"$unwind", bson.D{
-            {"path", "$user"},
-            {"preserveNullAndEmptyArrays", true},
+        {{Key: "$unwind", Value: bson.D{
+            {Key: "path", Value: "$user"},
+            {Key: "preserveNullAndEmptyArrays", Value: true},
         }}},
     }
 
@@ -247,17 +245,17 @@ func GetMyPosts(c *gin.Context) {
     postsColl := database.Client.Database("coded").Collection("posts")
 
     pipeline := mongo.Pipeline{
-        {{"$match", bson.D{{"userId", userID}}}},
-        {{"$sort", bson.D{{"createdAt", -1}}}},
-        {{"$lookup", bson.D{
-            {"from", "users"},
-            {"localField", "userId"},
-            {"foreignField", "_id"},
-            {"as", "user"},
+        {{Key: "$match", Value: bson.D{{Key: "userId", Value: userID}}}},
+        {{Key: "$sort", Value: bson.D{{Key: "createdAt", Value: -1}}}},
+        {{Key: "$lookup", Value: bson.D{
+            {Key: "from", Value: "users"},
+            {Key: "localField", Value: "userId"},
+            {Key: "foreignField", Value: "_id"},
+            {Key: "as", Value: "user"},
         }}},
-        {{"$unwind", bson.D{
-            {"path", "$user"},
-            {"preserveNullAndEmptyArrays", true},
+        {{Key: "$unwind", Value: bson.D{
+            {Key: "path", Value: "$user"},
+            {Key: "preserveNullAndEmptyArrays", Value: true},
         }}},
     }
 
