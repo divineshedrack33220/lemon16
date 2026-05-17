@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -31,36 +30,18 @@ func validateEnv() {
 
 			switch env {
 			case "JWT_SECRET":
+				if os.Getenv("GIN_MODE") == "release" {
+					log.Fatal("❌ FATAL: JWT_SECRET must be set in release mode!")
+				}
 				os.Setenv("JWT_SECRET", "dev-secret-change-in-prod")
+				log.Println("⚠️ Using insecure default JWT_SECRET (Development only)")
 			case "MONGODB_URI":
-				log.Println("⚠️ No MongoDB URI — app will run WITHOUT database")
+				log.Println("⚠️ No MongoDB URI — app will run WITHOUT database (degraded mode)")
 			}
 		}
 	}
 }
 
-func findFrontendPath() string {
-	// Check multiple possible locations
-	possiblePaths := []string{
-		"./frontend",                // Same directory
-		"../frontend",               // One level up (your current structure)
-		"./coded/frontend",          // Nested
-		os.Getenv("FRONTEND_PATH"),  // Environment variable
-	}
-
-	for _, path := range possiblePaths {
-		if path == "" {
-			continue
-		}
-		if _, err := os.Stat(path); err == nil {
-			absPath, _ := filepath.Abs(path)
-			log.Printf("📁 Found frontend at: %s", absPath)
-			return path
-		}
-	}
-
-	return "" // Not found
-}
 
 func main() {
 	log.Println("🚀 Starting backend...")
@@ -121,65 +102,6 @@ func main() {
 		websocket.WebSocketHandler(wsManager)(c.Writer, c.Request)
 	})
 
-	// ---------------- STATIC FILES ----------------
-	frontendPath := findFrontendPath()
-
-	if frontendPath != "" {
-		log.Println("📁 Serving frontend from:", frontendPath)
-
-		// Serve static directories
-		router.Static("/asset", frontendPath+"/asset")
-		router.Static("/css", frontendPath+"/css")
-		router.Static("/js", frontendPath+"/js")
-
-		// Serve root index.html
-		router.GET("/", func(c *gin.Context) {
-			c.File(frontendPath + "/index.html")
-		})
-
-		// Serve manifest.json and sw.js
-		router.GET("/manifest.json", func(c *gin.Context) {
-			c.File(frontendPath + "/manifest.json")
-		})
-
-		router.GET("/sw.js", func(c *gin.Context) {
-			c.File(frontendPath + "/sw.js")
-		})
-
-		router.GET("/offline.html", func(c *gin.Context) {
-			c.File(frontendPath + "/offline.html")
-		})
-
-		// Serve specific HTML files
-		htmlFiles := []string{
-			"login.html", "signup.html", "chat.html", "chats.html",
-			"favorites.html", "my-profile.html", "profile-settings.html",
-			"view-profile.html", "post.html", "live-requests.html",
-		}
-
-		for _, file := range htmlFiles {
-			// Create a new variable to capture the current file name
-			f := file
-			router.GET("/"+f, func(c *gin.Context) {
-				c.File(frontendPath + "/" + f)
-			})
-		}
-
-		// Catch-all for other HTML files
-		router.GET("/:page.html", func(c *gin.Context) {
-			page := c.Param("page") + ".html"
-			filePath := frontendPath + "/" + page
-			if _, err := os.Stat(filePath); err == nil {
-				c.File(filePath)
-			} else {
-				c.String(404, "Page not found")
-			}
-		})
-
-	} else {
-		log.Println("⚠️ No frontend found — API mode only")
-		log.Println("   Looking in: ./frontend, ../frontend")
-	}
 
 	// ---------------- PORT ----------------
 	port := os.Getenv("PORT")
@@ -199,9 +121,6 @@ func main() {
 	go func() {
 		log.Printf("🌐 Running on port %s", port)
 		log.Printf("📍 API Base URL: http://localhost:%s/api", port)
-		if frontendPath != "" {
-			log.Printf("📍 Frontend URL: http://localhost:%s", port)
-		}
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Server crash:", err)
 		}

@@ -28,11 +28,15 @@ func SetupRouter() *gin.Engine {
 
     // CORS configuration - Updated for Render
     allowOrigins := []string{
-        "http://localhost:8080",
+        "http://localhost:*",
+        "http://127.0.0.1:*",
         "http://localhost:5500",
         "http://localhost:3000",
         "http://127.0.0.1:8080",
         "http://127.0.0.1:5500",
+        "http://localhost:10000",
+        "http://127.0.0.1:10000",
+        "http://localhost:*",
         "https://coded-backend.onrender.com",
         "https://*.onrender.com",
     }
@@ -43,7 +47,9 @@ func SetupRouter() *gin.Engine {
     }
 
     router.Use(cors.New(cors.Config{
-        AllowOrigins:     allowOrigins,
+        AllowOriginFunc: func(origin string) bool {
+		return true // Allow all for development
+	},
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
         AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
         ExposeHeaders:    []string{"Content-Length", "Content-Type"},
@@ -55,6 +61,7 @@ func SetupRouter() *gin.Engine {
     router.POST("/api/signup", handlers.Signup)
     router.POST("/api/login", handlers.Login)
     router.GET("/api/vapid-public-key", handlers.GetVapidPublicKey)
+    router.GET("/api/groups/invite/:code", handlers.GetGroupInfoByInviteCode)
     
     // Google OAuth routes
     router.GET("/api/google/auth-url", handlers.GetGoogleAuthURL)
@@ -68,14 +75,17 @@ func SetupRouter() *gin.Engine {
     // Profile
     protected.GET("/me", handlers.GetMyProfile)
     protected.PUT("/me", handlers.UpdateMyProfile)
+    protected.DELETE("/me", handlers.DeleteMyProfile)
     protected.GET("/user/:id", handlers.GetUser)
     protected.PUT("/me/status", handlers.UpdateUserStatus)
+    protected.POST("/block", handlers.BlockUser)
 
     // Test endpoint
     protected.GET("/test-auth", handlers.TestAuth)
 
-    // Nearby users
+    // Users
     protected.GET("/users/nearby", handlers.GetNearbyUsers)
+    protected.GET("/users/search", handlers.SearchUsers)
 
     // Posts
     protected.POST("/post", handlers.CreatePost)
@@ -95,12 +105,19 @@ func SetupRouter() *gin.Engine {
     protected.GET("/chats", handlers.GetChatList)
     protected.POST("/chats", handlers.CreateChat)
     protected.GET("/chats/:id", handlers.GetChat)
+    protected.PUT("/chats/:id", handlers.UpdateGroupChat)
+    protected.POST("/chats/:id/admin", handlers.PromoteToAdmin)
+    protected.DELETE("/chats/:id/participants/:userId", handlers.RemoveGroupMember)
+    protected.POST("/chats/:id/invite", handlers.GenerateGroupInviteCode)
+    protected.POST("/groups/join", handlers.JoinGroupByInviteCode)
+    protected.POST("/chats/:id/participants", handlers.AddGroupMember)
 
     // Messages
     protected.POST("/message", handlers.SendMessage)
-    protected.GET("/messages/:chatId", handlers.GetMessages)
+    protected.GET("/messages/:id", handlers.GetMessages)
     protected.POST("/messages/:id/read", handlers.MarkAsRead)
     protected.POST("/typing", handlers.SendTypingIndicator)
+    protected.POST("/messages/:id/react", handlers.ReactToMessage)
 
     // Photo upload
     protected.POST("/upload-photo", handlers.UploadPhoto)

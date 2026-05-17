@@ -2,9 +2,11 @@ package handlers
 
 import (
     "context"
+	"fmt"
     "log"
     "math"
     "net/http"
+    "sort"
     "time"
 
     "coded/database"
@@ -13,9 +15,9 @@ import (
     "github.com/gin-gonic/gin"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/bson/primitive"
+    "go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// GetNearbyUsers finds users within a certain radius of the current user
 func GetNearbyUsers(c *gin.Context) {
     log.Printf("[GetNearbyUsers] Request received")
     
@@ -31,31 +33,35 @@ func GetNearbyUsers(c *gin.Context) {
 
     usersColl := database.Client.Database("coded").Collection("users")
 
-    // Get current user's location
     var currentUser models.User
     err = usersColl.FindOne(ctx, bson.M{"_id": userID}).Decode(&currentUser)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch current user"})
         return
     }
-
-    // Check if current user has location data
-    if currentUser.Latitude == nil || currentUser.Longitude == nil ||
-        *currentUser.Latitude == 0 && *currentUser.Longitude == 0 {
-        // User doesn't have location, return empty array
-        log.Printf("[GetNearbyUsers] Current user has no location data")
-        c.JSON(http.StatusOK, []interface{}{})
-        return
+    if currentUser.BlockedUsers == nil {
+        currentUser.BlockedUsers = []primitive.ObjectID{}
     }
 
-    // Get all users except current user
-    cursor, err := usersColl.Find(ctx, bson.M{
-        "_id": bson.M{"$ne": userID},
-        "latitude": bson.M{"$exists": true, "$ne": nil},
-        "longitude": bson.M{"$exists": true, "$ne": nil},
-    })
+    hasLocation := currentUser.Latitude != nil && currentUser.Longitude != nil &&
+        *currentUser.Latitude != 0 && *currentUser.Longitude != 0
+
+    // Filter out:
+    // 1. Myself
+    // 2. Users I have blocked
+    // 3. Users who have blocked me
+    blockedFilter := bson.M{
+        "_id": bson.M{
+            "$ne":  userID,
+            "$nin": currentUser.BlockedUsers,
+        },
+        "blockedUsers": bson.M{"$ne": userID},
+    }
+
+    // Get a limited sample of users to reduce server stress
+    findOptions := options.Find().SetLimit(30)
+    cursor, err := usersColl.Find(ctx, blockedFilter, findOptions)
     if err != nil {
-        log.Printf("[GetNearbyUsers] Database error: %v", err)
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
         return
     }
@@ -63,65 +69,72 @@ func GetNearbyUsers(c *gin.Context) {
 
     var allUsers []models.User
     if err = cursor.All(ctx, &allUsers); err != nil {
-        log.Printf("[GetNearbyUsers] Decode error: %v", err)
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode users"})
         return
     }
 
-    var nearbyUsers []map[string]interface{}
-    currentLat := *currentUser.Latitude
-    currentLon := *currentUser.Longitude
-
-    log.Printf("[GetNearbyUsers] Current location: %f, %f", currentLat, currentLon)
-    log.Printf("[GetNearbyUsers] Found %d total users", len(allUsers))
+    var nearbyUsers = []map[string]interface{}{}
 
     for _, user := range allUsers {
-        if user.Latitude == nil || user.Longitude == nil ||
-            *user.Latitude == 0 && *user.Longitude == 0 {
-            continue
-        }
-
-        // Calculate distance using Haversine formula
-        distance := calculateDistance(currentLat, currentLon, *user.Latitude, *user.Longitude)
+        var distance float64 = 999999 // Default for no location
+        var distanceStr string = "Nearby"
         
-        // Filter users within 50km radius (adjust this as needed)
-        if distance <= 50.0 {
+        if hasLocation && user.Latitude != nil && user.Longitude != nil &&
+            *user.Latitude != 0 && *user.Longitude != 0 {
+            distance = calculateDistance(*currentUser.Latitude, *currentUser.Longitude, *user.Latitude, *user.Longitude)
             distanceMeters := math.Round(distance * 1000)
-            nearbyUsers = append(nearbyUsers, map[string]interface{}{
-                "id":       user.ID.Hex(),
-                "name":     user.Name,
-                "avatar":   user.Avatar,
-                "distance": distanceMeters,
-                "status":   user.Status,
-                "bio":      user.Bio,
-            })
-            log.Printf("[GetNearbyUsers] Found nearby user: %s (%fm)", user.Name, distanceMeters)
+            if distanceMeters < 1000 {
+                distanceStr = fmt.Sprintf("%.0fm away", distanceMeters)
+            } else {
+                distanceStr = fmt.Sprintf("%.1fkm away", distance/1000)
+            }
         }
+
+        // Calculate a "Match Score"
+        // Higher is better. 
+        // 1. Distance score (max 100 points, closer is better)
+        distScore := math.Max(0, 100 - (distance / 10)) 
+        
+        // 2. Preference score (max 50 points)
+        prefScore := 0.0
+        for _, interest := range currentUser.InterestedIn {
+            if user.Gender == interest {
+                prefScore = 50.0
+                break
+            }
+        }
+
+        nearbyUsers = append(nearbyUsers, map[string]interface{}{
+            "id":       user.ID.Hex(),
+            "name":     user.Name,
+            "avatar":   user.Avatar,
+            "distance": distanceStr,
+            "distVal":  distance,
+            "status":   user.Status,
+            "bio":      user.Bio,
+            "score":    distScore + prefScore,
+        })
     }
 
-    log.Printf("[GetNearbyUsers] Returning %d nearby users", len(nearbyUsers))
-    
-    // If no nearby users found, return empty array
-    if len(nearbyUsers) == 0 {
-        c.JSON(http.StatusOK, []interface{}{})
-        return
+    // Sort by score (descending)
+    sort.Slice(nearbyUsers, func(i, j int) bool {
+        return nearbyUsers[i]["score"].(float64) > nearbyUsers[j]["score"].(float64)
+    })
+
+    // Take top 30
+    if len(nearbyUsers) > 30 {
+        nearbyUsers = nearbyUsers[:30]
     }
 
+    log.Printf("[GetNearbyUsers] Returning %d ranked users", len(nearbyUsers))
     c.JSON(http.StatusOK, nearbyUsers)
 }
 
-// calculateDistance calculates distance in kilometers using Haversine formula
 func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
-    const R = 6371 // Earth's radius in kilometers
-    
+    const R = 6371
     dLat := (lat2 - lat1) * math.Pi / 180
     dLon := (lon2 - lon1) * math.Pi / 180
-    
-    a := math.Sin(dLat/2)*math.Sin(dLat/2) +
-        math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*
-            math.Sin(dLon/2)*math.Sin(dLon/2)
-    
+    a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*math.Sin(dLon/2)*math.Sin(dLon/2)
     c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-    
     return R * c
 }

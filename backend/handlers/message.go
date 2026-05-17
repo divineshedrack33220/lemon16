@@ -18,7 +18,7 @@ import (
 )
 
 func GetMessages(c *gin.Context) {
-    chatIDStr := c.Param("chatId")
+    chatIDStr := c.Param("id")
     chatID, err := primitive.ObjectIDFromHex(chatIDStr)
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
@@ -427,5 +427,74 @@ func SendTypingIndicator(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{
         "message": "Typing indicator sent",
         "typing":  req.Typing,
+    })
+}
+
+func ReactToMessage(c *gin.Context) {
+    messageIDStr := c.Param("id")
+    messageID, err := primitive.ObjectIDFromHex(messageIDStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message ID"})
+        return
+    }
+
+    var req struct {
+        Emoji string `json:"emoji" binding:"required"`
+    }
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+
+    userIDStr := c.GetString("userId")
+    userID, err := primitive.ObjectIDFromHex(userIDStr)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
+        return
+    }
+
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    messagesColl := database.Client.Database("coded").Collection("messages")
+    
+    // Update the reaction
+    update := bson.M{
+        "$set": bson.M{
+            "reactions." + userID.Hex(): req.Emoji,
+        },
+    }
+    
+    // If emoji is empty or "remove", remove it
+    if req.Emoji == "" || req.Emoji == "remove" {
+        update = bson.M{
+            "$unset": bson.M{
+                "reactions." + userID.Hex(): "",
+            },
+        }
+    }
+
+    _, err = messagesColl.UpdateOne(ctx, bson.M{"_id": messageID}, update)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update reaction"})
+        return
+    }
+
+    // Get the updated message to broadcast
+    var updatedMsg models.Message
+    err = messagesColl.FindOne(ctx, bson.M{"_id": messageID}).Decode(&updatedMsg)
+    if err == nil && wsManager != nil {
+        wsManager.BroadcastMessageReaction(map[string]interface{}{
+            "messageId": updatedMsg.ID.Hex(),
+            "chatId":    updatedMsg.ChatID.Hex(),
+            "userId":    userID.Hex(),
+            "emoji":     req.Emoji,
+            "reactions": updatedMsg.Reactions,
+        })
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "message":   "Reaction updated",
+        "reactions": updatedMsg.Reactions,
     })
 }

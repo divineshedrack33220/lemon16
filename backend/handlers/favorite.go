@@ -181,37 +181,50 @@ func GetFavorites(c *gin.Context) {
 		return
 	}
 
+	// Fetch current user for blocked list
+	var currentUser models.User
+	usersColl.FindOne(ctx, bson.M{"_id": userID}).Decode(&currentUser)
+	if currentUser.BlockedUsers == nil {
+		currentUser.BlockedUsers = []primitive.ObjectID{}
+	}
+
 	userMap := make(map[primitive.ObjectID]map[string]interface{})
 	for _, u := range users {
+		// Filter out blocked users
+		isBlocked := false
+		for _, bID := range currentUser.BlockedUsers {
+			if bID == u.ID {
+				isBlocked = true
+				break
+			}
+		}
+		if isBlocked {
+			continue
+		}
+
+		// Calculate live online status (active in last 5 mins)
+		isOnline := u.Status == "available" || (u.LastSeen > time.Now().Unix()-300)
+
 		userMap[u.ID] = map[string]interface{}{
-			"id":     u.ID.Hex(),
-			"name":   u.Name,
-			"avatar": u.Avatar,
-			"status": u.Status,
-			"bio":    u.Bio,
+			"id":       u.ID.Hex(),
+			"name":     u.Name,
+			"avatar":   u.Avatar,
+			"status":   u.Status,
+			"isOnline": isOnline,
+			"bio":      u.Bio,
 		}
 	}
 
 	// Use the global fallbackAvatar from common.go
-	response := make([]map[string]interface{}, len(favorites))
-	for i, f := range favorites {
-		userData := map[string]interface{}{
-			"id":     f.TargetUserID.Hex(),
-			"name":   "Unknown User",
-			"avatar": fallbackAvatar,
-			"status": "offline",
-			"bio":    "",
-		}
-
+	var response []map[string]interface{}
+	for _, f := range favorites {
 		if storedUser, exists := userMap[f.TargetUserID]; exists {
-			userData = storedUser
-		}
-
-		response[i] = map[string]interface{}{
-			"id":           f.ID.Hex(),
-			"targetUserId": f.TargetUserID.Hex(),
-			"createdAt":    f.CreatedAt,
-			"user":         userData,
+			response = append(response, map[string]interface{}{
+				"id":           f.ID.Hex(),
+				"targetUserId": f.TargetUserID.Hex(),
+				"createdAt":    f.CreatedAt,
+				"user":         storedUser,
+			})
 		}
 	}
 

@@ -9,5 +9,6 @@ type Message struct {
     Content   string             `bson:"content" json:"content"`
     Type      string             `bson:"type" json:"type"` // text, image, voice
     IsRead    bool               `bson:"isRead" json:"isRead"`
+    Reactions map[string]string `bson:"reactions,omitempty" json:"reactions,omitempty"`
     CreatedAt int64              `bson:"createdAt" json:"createdAt"`
 }

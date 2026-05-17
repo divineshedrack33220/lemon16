@@ -2,11 +2,16 @@ package websocket
 
 import (
     "encoding/json"
+    "fmt"
     "log"
     "net/http"
+    "os"
     "sync"
     "time"
 
+    "coded/middleware"
+
+    "github.com/golang-jwt/jwt/v5"
     "github.com/gorilla/websocket"
 )
 
@@ -54,15 +59,25 @@ func (m *Manager) Start() {
             
         case message := <-m.broadcast:
             m.mu.RLock()
+            // Create a slice of clients to avoid potential deadlocks or map modification issues
+            clientsToBroadcast := make([]*Client, 0, len(m.clients))
             for client := range m.clients {
+                clientsToBroadcast = append(clientsToBroadcast, client)
+            }
+            m.mu.RUnlock()
+
+            for _, client := range clientsToBroadcast {
                 select {
                 case client.send <- message:
                 default:
-                    close(client.send)
-                    delete(m.clients, client)
+                    m.mu.Lock()
+                    if _, ok := m.clients[client]; ok {
+                        close(client.send)
+                        delete(m.clients, client)
+                    }
+                    m.mu.Unlock()
                 }
             }
-            m.mu.RUnlock()
         }
     }
 }
@@ -80,6 +95,37 @@ func (m *Manager) BroadcastNewMessage(message map[string]interface{}) {
     }
     
     log.Printf("📢 Broadcasting new message to %d clients", len(m.clients))
+    m.broadcast <- msg
+}
+
+func (m *Manager) BroadcastNewRequest(requestData map[string]interface{}) {
+    data := map[string]interface{}{
+        "type":    "new_request",
+        "payload": requestData,
+    }
+    
+    msg, err := json.Marshal(data)
+    if err != nil {
+        log.Printf("❌ Error marshaling WebSocket request: %v", err)
+        return
+    }
+    
+    log.Printf("📢 Broadcasting new request to %d clients", len(m.clients))
+    m.broadcast <- msg
+}
+
+func (m *Manager) BroadcastRequestUpdate(updateData map[string]interface{}) {
+    data := map[string]interface{}{
+        "type":    "request_update",
+        "payload": updateData,
+    }
+    
+    msg, err := json.Marshal(data)
+    if err != nil {
+        log.Printf("❌ Error marshaling WebSocket request update: %v", err)
+        return
+    }
+    
     m.broadcast <- msg
 }
 
@@ -144,6 +190,21 @@ func (m *Manager) BroadcastTypingEnd(payload map[string]interface{}) {
     m.broadcast <- msg
 }
 
+func (m *Manager) BroadcastMessageReaction(payload map[string]interface{}) {
+    data := map[string]interface{}{
+        "type":    "message_reaction",
+        "payload": payload,
+    }
+    
+    msg, err := json.Marshal(data)
+    if err != nil {
+        log.Printf("❌ Error marshaling WebSocket message: %v", err)
+        return
+    }
+    
+    m.broadcast <- msg
+}
+
 func (m *Manager) GetConnectedUsers() int {
     m.mu.RLock()
     defer m.mu.RUnlock()
@@ -160,16 +221,35 @@ var upgrader = websocket.Upgrader{
 
 func WebSocketHandler(manager *Manager) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        token := r.URL.Query().Get("token")
-        if token == "" {
+        tokenString := r.URL.Query().Get("token")
+        if tokenString == "" {
             log.Printf("❌ WebSocket connection rejected: no token provided")
             http.Error(w, "Token required", http.StatusUnauthorized)
             return
         }
         
-        // TODO: Validate JWT token and extract userID
-        // For now, we'll use the token as userID
-        userID := token
+        // Validate JWT token
+        claims := &middleware.Claims{}
+        token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+                return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+            }
+            
+            jwtSecret := os.Getenv("JWT_SECRET")
+            if jwtSecret == "" {
+                jwtSecret = "your-secret-key-change-this-in-production"
+            }
+            return []byte(jwtSecret), nil
+        })
+
+        if err != nil || !token.Valid {
+            log.Printf("❌ WebSocket connection rejected: invalid token: %v", err)
+            http.Error(w, "Invalid token", http.StatusUnauthorized)
+            return
+        }
+
+        userID := claims.UserID
+        log.Printf("👤 WebSocket authenticated user: %s", userID)
         
         conn, err := upgrader.Upgrade(w, r, nil)
         if err != nil {

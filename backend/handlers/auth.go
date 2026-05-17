@@ -20,8 +20,9 @@ import (
 )
 
 type SignupRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
+	Email      string `json:"email" binding:"required,email"`
+	Password   string `json:"password" binding:"required,min=6"`
+	InviteCode string `json:"inviteCode"`
 }
 
 type LoginRequest struct {
@@ -110,6 +111,19 @@ func Signup(c *gin.Context) {
 			"message": "Failed to create user account",
 		})
 		return
+	}
+
+	if req.InviteCode != "" {
+		chatsColl := database.Client.Database("coded").Collection("chats")
+		_, chatErr := chatsColl.UpdateOne(ctx,
+			bson.M{"inviteCode": req.InviteCode, "isGroup": true},
+			bson.M{"$addToSet": bson.M{"participants": user.ID}},
+		)
+		if chatErr != nil {
+			fmt.Printf("⚠️ Failed to auto-join group by inviteCode: %v\n", chatErr)
+		} else {
+			fmt.Printf("✅ New user %s auto-joined group via inviteCode %s\n", user.Email, req.InviteCode)
+		}
 	}
 
 	fmt.Printf("✅ User created: %s (ID: %s)\n", req.Email, user.ID.Hex())

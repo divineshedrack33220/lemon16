@@ -1,0 +1,215 @@
+# InstaPing - Real-time Social Connection Platform
+
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-4.4+-47A248?style=flat&logo=mongodb)](https://www.mongodb.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?style=flat&logo=render)](https://render.com)
+
+InstaPing is a full-stack social networking application that enables real-time communication, location-based user discovery, and interactive feed management. Built with Go/Gin backend, MongoDB database, WebSocket for real-time features, and a responsive HTML/CSS/JS frontend.
+
+## ✨ Features
+
+### Core Features
+- **🔐 Authentication System** - Email/Password and Google OAuth 2.0
+- **💬 Real-time Messaging** - Instant messaging with WebSocket
+- **📍 Location-based Discovery** - Find nearby users
+- **📱 Social Features** - Posts, favorites, profiles
+- **🔔 Push Notifications** - Web Push API integration
+- **📸 Image Sharing** - Cloudinary integration
+
+### Technical Features
+- RESTful API with proper HTTP methods
+- WebSocket Server for real-time communication
+- MongoDB Indexing for optimized queries
+- CORS Configuration for cross-origin requests
+- Rate Limiting to prevent abuse
+- PWA Support with Service Worker
+- Responsive Design for all devices
+
+## 🛠️ Tech Stack
+
+### Backend
+- Go 1.21+ / Gin Framework
+- Gorilla WebSocket
+- MongoDB Driver
+- JWT Authentication
+- Cloudinary SDK
+- WebPush Library
+
+### Frontend
+- HTML5/CSS3
+- Vanilla JavaScript
+- WebSocket API
+- Geolocation API
+- Service Workers (PWA)
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Go 1.21 or higher
+- MongoDB 4.4 or higher
+- Cloudinary account
+- Google Cloud Platform account (for OAuth)
+
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/divineshedrack33220/coded.git
+cd coded
+Set up environment variables
+Create .env file in backend/ directory:
+
+env
+PORT=10000
+MONGODB_URI=mongodb://localhost:27017
+JWT_SECRET=your-secret-key
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+Install dependencies
+
+bash
+cd backend
+go mod download
+go mod tidy
+Run the application
+
+bash
+go run main.go
+The app will be available at http://localhost:10000
+
+📁 Project Structure
+text
+coded/
+├── backend/
+│   ├── database/      # MongoDB connection
+│   ├── handlers/      # API handlers
+│   ├── middleware/    # Auth & rate limiting
+│   ├── models/        # Data models
+│   ├── routes/        # Route definitions
+│   ├── websocket/     # WebSocket manager
+│   └── main.go        # Entry point
+├── frontend/          # Static files
+│   ├── asset/         # Images
+│   ├── css/           # Styles
+│   ├── js/            # Scripts
+│   └── *.html         # Pages
+└── README.md
+🔌 API Endpoints
+Authentication
+POST /api/signup - Register user
+
+POST /api/login - Login user
+
+POST /api/google-auth - Google sign-in
+
+GET /api/me - Get profile
+
+PUT /api/me - Update profile
+
+Posts & Feed
+POST /api/post - Create post
+
+GET /api/feed - Get feed
+
+GET /api/user/:id/posts - User posts
+
+Messaging
+GET /api/chats - Get chats
+
+POST /api/chats - Create chat
+
+POST /api/message - Send message
+
+GET /api/messages/:chatId - Get messages
+
+POST /api/typing - Typing indicator
+
+Discovery
+GET /api/users/nearby - Find nearby users
+
+POST /api/favorite - Add favorite
+
+DELETE /api/favorite - Remove favorite
+
+GET /api/favorites - Get favorites
+
+WebSocket
+ws://localhost:10000/ws?token=TOKEN - WebSocket connection
+
+🚢 Deployment on Render
+Push code to GitHub
+
+Connect repository to Render
+
+Configure:
+
+Build Command: cd backend && go build -o coded-backend
+
+Start Command: cd backend && ./coded-backend
+
+Add environment variables
+
+Deploy!
+
+🧪 Testing
+bash
+# Test health endpoint
+curl http://localhost:10000/api/health
+
+# Test signup
+curl -X POST http://localhost:10000/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"123456"}'
+
+# Test login
+curl -X POST http://localhost:10000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"123456"}'
+🔒 Security Features
+JWT authentication with expiration
+
+Password hashing with bcrypt
+
+CORS protection
+
+Rate limiting
+
+Input validation
+
+XSS prevention
+
+🤝 Contributing
+Fork the repository
+
+Create feature branch (git checkout -b feature/AmazingFeature)
+
+Commit changes (git commit -m 'Add AmazingFeature')
+
+Push to branch (git push origin feature/AmazingFeature)
+
+Open a Pull Request
+
+📄 License
+MIT License - see LICENSE file for details
+
+👤 Author
+Divine Shedrack
+
+GitHub: @divineshedrack33220
+
+🙏 Acknowledgments
+Gin Framework
+
+Gorilla WebSocket
+
+MongoDB Go Driver
+
+Cloudinary
+
+Render
+
+Built with ❤️ using Go and modern web technologies
