@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"lemon16/backend/database"  // Update to your actual module
-	"lemon16/backend/handlers"
-	"lemon16/backend/routes"
-	"lemon16/backend/websocket"
+	"coded/database"
+	"coded/handlers"
+	"coded/routes"
+	"coded/websocket"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -83,9 +83,21 @@ func main() {
 	// ---------------- ROUTER ----------------
 	router := routes.SetupRouter()
 
+	// Log DB status for monitoring
+	log.Printf("📊 Database connection status: %v", dbConnected)
+
 	// WebSocket endpoint
 	router.GET("/ws", func(c *gin.Context) {
 		websocket.WebSocketHandler(wsManager)(c.Writer, c.Request)
+	})
+
+	// Health check endpoint for Render
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+			"time":   time.Now().Unix(),
+			"db":     dbConnected,
+		})
 	})
 
 	// ---------------- PORT (CRITICAL FOR RENDER) ----------------
@@ -95,7 +107,7 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:         "0.0.0.0:" + port,  // ✅ Correct for Render
+		Addr:         "0.0.0.0:" + port,
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -105,7 +117,8 @@ func main() {
 	// ---------------- START SERVER ----------------
 	go func() {
 		log.Printf("🌐 Server listening on 0.0.0.0:%s", port)
-		log.Printf("📍 API available at port %s", port)
+		log.Printf("📍 Health check: http://0.0.0.0:%s/health", port)
+		log.Printf("📍 API available on port %s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Server crash:", err)
 		}
