@@ -6,13 +6,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
-	"coded/database"
-	"coded/handlers"
-	"coded/routes"
-	"coded/websocket"
+	"lemon16/backend/database"  // Update to your actual module
+	"lemon16/backend/handlers"
+	"lemon16/backend/routes"
+	"lemon16/backend/websocket"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -42,8 +43,11 @@ func validateEnv() {
 	}
 }
 
-
 func main() {
+	// OPTIMIZATION: Reduce memory usage for Render free tier
+	gin.SetMode(gin.ReleaseMode)
+	runtime.GOMAXPROCS(1)
+	
 	log.Println("🚀 Starting backend...")
 
 	_ = godotenv.Load()
@@ -52,31 +56,23 @@ func main() {
 	// Initialize VAPID keys for push notifications
 	handlers.InitVAPIDKeys()
 
-	// ---------------- DB CONNECTION (NON-BLOCKING) ----------------
+	// ---------------- DB CONNECTION (FASTER STARTUP) ----------------
 	log.Println("🔌 Connecting to MongoDB...")
 	var dbConnected bool
 
-	for i := 1; i <= 3; i++ {
-		if err := database.ConnectDB(); err != nil {
-			log.Printf("❌ DB attempt %d failed: %v", i, err)
-			time.Sleep(2 * time.Second)
-		} else {
-			dbConnected = true
-			break
-		}
-	}
-
-	if dbConnected {
+	if err := database.ConnectDB(); err != nil {
+		log.Printf("⚠️ Running WITHOUT MongoDB: %v", err)
+		dbConnected = false
+	} else {
+		dbConnected = true
 		log.Println("✅ MongoDB connected")
-
+		
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-
+		
 		if err := database.Client.Ping(ctx, nil); err != nil {
 			log.Println("⚠️ MongoDB ping failed:", err)
 		}
-	} else {
-		log.Println("⚠️ Running WITHOUT MongoDB (degraded mode)")
 	}
 
 	// ---------------- WEBSOCKET ----------------
@@ -84,33 +80,22 @@ func main() {
 	go wsManager.Start()
 	handlers.SetWebSocketManager(wsManager)
 
-	// ---------------- GIN MODE ----------------
-	if os.Getenv("GIN_MODE") == "release" {
-		gin.SetMode(gin.ReleaseMode)
-	} else {
-		gin.SetMode(gin.DebugMode)
-	}
-
 	// ---------------- ROUTER ----------------
 	router := routes.SetupRouter()
-
-	// Log DB status for monitoring
-	log.Printf("📊 Database connection status: %v", dbConnected)
 
 	// WebSocket endpoint
 	router.GET("/ws", func(c *gin.Context) {
 		websocket.WebSocketHandler(wsManager)(c.Writer, c.Request)
 	})
 
-
-	// ---------------- PORT ----------------
+	// ---------------- PORT (CRITICAL FOR RENDER) ----------------
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
 	server := &http.Server{
-		Addr:         "0.0.0.0:" + port,
+		Addr:         "0.0.0.0:" + port,  // ✅ Correct for Render
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -119,8 +104,8 @@ func main() {
 
 	// ---------------- START SERVER ----------------
 	go func() {
-		log.Printf("🌐 Running on port %s", port)
-		log.Printf("📍 API Base URL: http://localhost:%s/api", port)
+		log.Printf("🌐 Server listening on 0.0.0.0:%s", port)
+		log.Printf("📍 API available at port %s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Server crash:", err)
 		}
@@ -131,10 +116,9 @@ func main() {
 	// ---------------- GRACEFUL SHUTDOWN ----------------
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 	<-quit
+	
 	log.Println("🛑 Shutting down...")
-
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
