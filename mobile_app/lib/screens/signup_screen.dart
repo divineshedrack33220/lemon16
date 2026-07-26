@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -44,8 +42,6 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isLoading = false;
   String _errorMessage = '';
   List<bool> _uploadingSlots = List.filled(6, false);
-  
-  final String _baseUrl = ApiService.baseUrl.replaceAll('/api', '');
 
   late PageController _pageController;
   
@@ -61,11 +57,8 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _loadToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _token = prefs.getString('token');
-      _userId = prefs.getString('userId');
-    });
+    _token = await ApiService.getToken();
+    _userId = authService.userId;
   }
 
   bool _isValidEmail(String email) {
@@ -95,9 +88,10 @@ class _SignupScreenState extends State<SignupScreen> {
           _token = result['token'];
           _userId = result['userId'];
           
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('token', _token!);
-          await prefs.setString('userId', _userId!);
+          await authService.saveAuth(
+            result['token'],
+            result['userId'],
+          );
           
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -148,32 +142,29 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/signup'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _email, 
-          'password': _password,
-          if (widget.inviteCode != null && widget.inviteCode!.isNotEmpty) 'inviteCode': widget.inviteCode,
-        }),
-      );
+      final result = await ApiService.signup({
+        'email': _email,
+        'password': _password,
+        if (widget.inviteCode != null && widget.inviteCode!.isNotEmpty) 'inviteCode': widget.inviteCode,
+      });
 
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        _token = data['token'];
-        _userId = data['userId'];
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', _token!);
-        await prefs.setString('userId', _userId!);
-        _isGoogleSignup = false;
-        
-        _nextScreen();
-      } else {
-        final error = jsonDecode(response.body);
+      if (result['error'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error['error'] ?? 'Signup failed')),
+          SnackBar(content: Text(result['message'] ?? 'Signup failed')),
         );
+        return;
       }
+
+      _token = result['token'];
+      _userId = result['userId'];
+
+      await authService.saveAuth(
+        result['token']!,
+        result['userId']!,
+      );
+      _isGoogleSignup = false;
+      
+      _nextScreen();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Connection error')),
@@ -234,26 +225,12 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/api/me'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
-        body: jsonEncode(onboardingData),
-      );
+      await ApiService.updateProfile(onboardingData);
 
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Welcome to Zukaping!')),
-        );
-        Navigator.pushReplacementNamed(context, '/feed');
-      } else {
-        final error = jsonDecode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error['error'] ?? 'Failed to save profile')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Welcome to Zukaping!')),
+      );
+      Navigator.pushReplacementNamed(context, '/feed');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save profile')),
@@ -281,26 +258,12 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$_baseUrl/api/upload-photo'),
-      );
-      request.headers['Authorization'] = 'Bearer $_token';
-      
       final bytes = await pickedFile.readAsBytes();
-      request.files.add(http.MultipartFile.fromBytes(
-        'photo',
-        bytes,
-        filename: pickedFile.name,
-      ));
+      final url = await ApiService.uploadImage(bytes, pickedFile.name);
       
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (url != null) {
         setState(() {
-          _uploadedPhotos[index] = data['url'];
+          _uploadedPhotos[index] = url;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Photo uploaded')),

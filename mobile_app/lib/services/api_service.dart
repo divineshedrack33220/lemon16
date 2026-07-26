@@ -5,31 +5,27 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'auth_service.dart';
+import 'api_client.dart';
+
 class ApiService {
-  // Use 10.0.2.2 for Android emulator, localhost for iOS/Web
-  static String get baseUrl {
-    const fromEnv = String.fromEnvironment('API_URL');
-    if (fromEnv.isNotEmpty) return fromEnv;
-    
-    // Dynamic Self-Sensing configuration for Web (Render, Heroku, or custom domains)
-    if (kIsWeb) {
-      final host = Uri.base.host;
-      if (host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0') {
-        return 'http://localhost:10000/api';
-      }
-      // Dynamically resolve to the browser's current hosted origin domain/port
-      return '${Uri.base.scheme}://${Uri.base.host}${Uri.base.port != 0 && Uri.base.port != 80 && Uri.base.port != 443 ? ":${Uri.base.port}" : ""}/api';
-    }
-    
-    // For Native Apps (Android / iOS)
-    if (kReleaseMode) {
-      // Primary hosted production backend API fallback
-      return 'https://zukaping.onrender.com/api'; // Swap this for your final production domain if needed
-    }
-    
-    // Android Emulator host loopback fallback in local debug mode
-    return 'http://10.0.2.2:10000/api';
+  static AuthService? _authService;
+  static ApiClient? _client;
+
+  static void init(AuthService authService) {
+    _authService = authService;
+    _client = ApiClient(authService);
   }
+
+  static ApiClient get client {
+    if (_client == null) {
+      _authService = AuthService();
+      _client = ApiClient(_authService!);
+    }
+    return _client!;
+  }
+
+  static String get baseUrl => client.baseUrl;
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -51,7 +47,7 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
-      
+
       final data = jsonDecode(response.body);
       if (response.statusCode != 200) {
         throw Exception(data['message'] ?? 'Login failed');
@@ -69,7 +65,7 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(userData),
       );
-      
+
       final data = jsonDecode(response.body);
       if (response.statusCode != 201) {
         throw Exception(data['message'] ?? 'Signup failed');
@@ -87,7 +83,7 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'credential': credential}),
       );
-      
+
       final data = jsonDecode(response.body);
       if (response.statusCode != 200) {
         throw Exception(data['error'] ?? data['message'] ?? 'Google auth failed');
@@ -99,111 +95,59 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getProfile() async {
-    final prefs = await SharedPreferences.getInstance();
     try {
-      final headers = await getHeaders();
-      final response = await http.get(Uri.parse('$baseUrl/me'), headers: headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        await prefs.setString('cached_profile', jsonEncode(data));
-        return data;
-      }
-      throw Exception('Server error: ${response.statusCode}');
+      return await client.get('/me', cacheKey: 'cached_profile');
     } catch (e) {
-      print('⚠️ getProfile offline fallback: $e');
+      final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('cached_profile');
-      if (cached != null) {
-        return jsonDecode(cached);
-      }
+      if (cached != null) return jsonDecode(cached);
       rethrow;
     }
   }
 
   static Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
-    final headers = await getHeaders();
-    final response = await http.put(
-      Uri.parse('$baseUrl/me'),
-      headers: headers,
-      body: jsonEncode(data),
-    );
-    final responseData = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      // If the backend returned the updated profile, update the cache
-      final prefs = await SharedPreferences.getInstance();
-      if (responseData['id'] != null) {
-        await prefs.setString('cached_profile', jsonEncode(responseData));
-      } else {
-        // No full profile returned — invalidate the cache so next getProfile always fetches fresh
-        await prefs.remove('cached_profile');
-      }
+    final result = await client.put('/me', body: data);
+    final prefs = await SharedPreferences.getInstance();
+    if (result != null && result['id'] != null) {
+      await prefs.setString('cached_profile', jsonEncode(result));
+    } else {
+      await prefs.remove('cached_profile');
     }
-    return responseData;
+    return result ?? {};
   }
 
   static Future<List<dynamic>> getFeed() async {
-    final prefs = await SharedPreferences.getInstance();
     try {
-      final headers = await getHeaders();
-      final response = await http.get(Uri.parse('$baseUrl/feed'), headers: headers);
-      
-      if (response.statusCode != 200) {
-        throw Exception('Failed to load feed');
-      }
-      
-      final data = jsonDecode(response.body);
-      final feedList = data is List ? data : data['posts'] ?? [];
-      await prefs.setString('cached_feed', jsonEncode(feedList));
-      return feedList;
+      final data = await client.get('/feed', cacheKey: 'cached_feed');
+      return data is List ? data : (data is Map ? (data['posts'] ?? []) : []);
     } catch (e) {
-      print('⚠️ getFeed offline fallback: $e');
+      final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('cached_feed');
-      if (cached != null) {
-        return jsonDecode(cached);
-      }
+      if (cached != null) return jsonDecode(cached);
       return [];
     }
   }
 
   static Future<Map<String, dynamic>> createPost(Map<String, dynamic> postData) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/post'),
-      headers: headers,
-      body: jsonEncode(postData),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/post', body: postData);
+    return result ?? {};
   }
 
   static Future<List<dynamic>> getChats() async {
-    final prefs = await SharedPreferences.getInstance();
     try {
-      final headers = await getHeaders();
-      final response = await http.get(Uri.parse('$baseUrl/chats'), headers: headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final chatsList = data is List ? data : data['chats'] ?? [];
-        await prefs.setString('cached_chats', jsonEncode(chatsList));
-        return chatsList;
-      }
-      throw Exception('Server error: ${response.statusCode}');
+      final data = await client.get('/chats', cacheKey: 'cached_chats');
+      return data is List ? data : (data is Map ? (data['chats'] ?? []) : []);
     } catch (e) {
-      print('⚠️ getChats offline fallback: $e');
+      final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('cached_chats');
-      if (cached != null) {
-        return jsonDecode(cached);
-      }
+      if (cached != null) return jsonDecode(cached);
       return [];
     }
   }
 
   static Future<Map<String, dynamic>> createChat(String userId) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/chats'),
-      headers: headers,
-      body: jsonEncode({'participants': [userId]}),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/chats', body: {'participants': [userId]});
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> createGroupChat(
@@ -212,40 +156,26 @@ class ApiService {
     String? groupDescription,
     String? groupAvatar,
   }) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/chats'),
-      headers: headers,
-      body: jsonEncode({
-        'participants': userIds,
-        'isGroup': true,
-        'groupName': groupName,
-        'groupDescription': groupDescription,
-        'groupAvatar': groupAvatar,
-      }),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/chats', body: {
+      'participants': userIds,
+      'isGroup': true,
+      'groupName': groupName,
+      'groupDescription': groupDescription,
+      'groupAvatar': groupAvatar,
+    });
+    return result ?? {};
   }
 
   static Future<List<dynamic>> getMessages(String chatId) async {
-    final prefs = await SharedPreferences.getInstance();
     try {
-      final headers = await getHeaders();
-      final response = await http.get(Uri.parse('$baseUrl/messages/$chatId'), headers: headers);
-      
-      if (response.statusCode != 200) {
-        throw Exception('Failed to load messages');
+      final data = await client.get('/messages/$chatId', cacheKey: 'cached_messages_$chatId');
+      if (data is List) return data.cast<Map<String, dynamic>>();
+      if (data is Map && data['messages'] != null) {
+        return (data['messages'] as List).cast<Map<String, dynamic>>();
       }
-      
-      final data = jsonDecode(response.body);
-      final messagesList = data is List 
-          ? data.cast<Map<String, dynamic>>() 
-          : (data['messages'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          
-      await prefs.setString('cached_messages_$chatId', jsonEncode(messagesList));
-      return messagesList;
+      return [];
     } catch (e) {
-      print('⚠️ getMessages offline fallback for chat $chatId: $e');
+      final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('cached_messages_$chatId');
       if (cached != null) {
         final decoded = jsonDecode(cached);
@@ -256,68 +186,48 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> sendMessage(String chatId, String content, {String type = 'text'}) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/message'),
-      headers: headers,
-      body: jsonEncode({
-        'chatId': chatId, 
-        'content': content,
-        'type': type,
-      }),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/message', body: {
+      'chatId': chatId,
+      'content': content,
+      'type': type,
+    });
+    return result ?? {};
   }
 
   static Future<List<dynamic>> getFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
     try {
-      final headers = await getHeaders();
-      final response = await http.get(Uri.parse('$baseUrl/favorites'), headers: headers);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final list = data is List ? data : data['favorites'] ?? [];
-        await prefs.setString('cached_favorites', jsonEncode(list));
-        return list;
-      }
-      throw Exception('Server error: ${response.statusCode}');
+      final data = await client.get('/favorites', cacheKey: 'cached_favorites');
+      return data is List ? data : (data is Map ? (data['favorites'] ?? []) : []);
     } catch (e) {
-      print('⚠️ getFavorites offline fallback: $e');
+      final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('cached_favorites');
-      if (cached != null) {
-        return jsonDecode(cached);
-      }
+      if (cached != null) return jsonDecode(cached);
       return [];
     }
   }
 
   static Future<Map<String, dynamic>> toggleFavorite(String userId) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/favorite'),
-      headers: headers,
-      body: jsonEncode({'targetUserId': userId}),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/favorite', body: {'targetUserId': userId});
+    return result ?? {};
+  }
+
+  static Future<Map<String, dynamic>> getUserById(String userId) async {
+    final data = await client.get('/user/$userId');
+    return data ?? {};
+  }
+
+  static Future<Map<String, dynamic>> getChat(String chatId) async {
+    final data = await client.get('/chats/$chatId');
+    return data ?? {};
   }
 
   static Future<List<dynamic>> getNearbyUsers(double lat, double lng) async {
-    final prefs = await SharedPreferences.getInstance();
     try {
-      final headers = await getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/users/nearby?lat=$lat&lng=$lng'),
-        headers: headers,
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final list = data is List ? data.cast<Map<String, dynamic>>() : (data['users'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-        await prefs.setString('cached_nearby_users', jsonEncode(list));
-        return list;
-      }
-      throw Exception('Server error: ${response.statusCode}');
+      final data = await client.get('/users/nearby?lat=$lat&lng=$lng', cacheKey: 'cached_nearby_users');
+      if (data is List) return data.cast<Map<String, dynamic>>();
+      return [];
     } catch (e) {
-      print('⚠️ getNearbyUsers offline fallback: $e');
+      final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('cached_nearby_users');
       if (cached != null) {
         final decoded = jsonDecode(cached);
@@ -328,13 +238,10 @@ class ApiService {
   }
 
   static Future<List<dynamic>> searchUsers(String query) async {
-    final headers = await getHeaders();
-    final response = await http.get(
-      Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}'),
-      headers: headers,
-    );
-    final data = jsonDecode(response.body);
-    return data is List ? data : (data['users'] as List?) ?? [];
+    final data = await client.get('/users/search?q=${Uri.encodeComponent(query)}');
+    if (data is List) return data;
+    if (data is Map) return data['users'] ?? [];
+    return [];
   }
 
   static Future<String?> uploadImage(Uint8List bytes, String filename) async {
@@ -343,7 +250,7 @@ class ApiService {
     if (token != null) {
       request.headers['Authorization'] = 'Bearer $token';
     }
-    
+
     request.files.add(http.MultipartFile.fromBytes(
       'photo',
       bytes,
@@ -353,16 +260,13 @@ class ApiService {
     try {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['url'];
-      } else {
-        print('Upload failed with status: ${response.statusCode}');
-        return null;
       }
+      return null;
     } catch (e) {
-      print('Error uploading image: $e');
       return null;
     }
   }
@@ -386,22 +290,17 @@ class ApiService {
   }
 
   static Future<bool> reactToMessage(String messageId, String emoji) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/messages/$messageId/react'),
-      headers: await getHeaders(),
-      body: json.encode({'emoji': emoji}),
-    );
-    return response.statusCode == 200;
+    try {
+      await client.post('/messages/$messageId/react', body: {'emoji': emoji});
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<Map<String, dynamic>> blockUser(String userId) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/block'),
-      headers: headers,
-      body: jsonEncode({'targetUserId': userId}),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/block', body: {'targetUserId': userId});
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> updateGroupChat(
@@ -410,92 +309,51 @@ class ApiService {
     String? groupDescription,
     String? groupAvatar,
   }) async {
-    final headers = await getHeaders();
     final body = <String, dynamic>{};
     if (groupName != null) body['groupName'] = groupName;
     if (groupDescription != null) body['groupDescription'] = groupDescription;
     if (groupAvatar != null) body['groupAvatar'] = groupAvatar;
-
-    final response = await http.put(
-      Uri.parse('$baseUrl/chats/$chatId'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
-    return jsonDecode(response.body);
+    final result = await client.put('/chats/$chatId', body: body);
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> promoteToAdmin(String chatId, String targetUserId) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/chats/$chatId/admin'),
-      headers: headers,
-      body: jsonEncode({'targetUserId': targetUserId}),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/chats/$chatId/admin', body: {'targetUserId': targetUserId});
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> removeGroupMember(String chatId, String userId) async {
-    final headers = await getHeaders();
-    final response = await http.delete(
-      Uri.parse('$baseUrl/chats/$chatId/participants/$userId'),
-      headers: headers,
-    );
-    return jsonDecode(response.body);
+    final result = await client.delete('/chats/$chatId/participants/$userId');
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> generateGroupInviteCode(String chatId) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/chats/$chatId/invite'),
-      headers: headers,
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/chats/$chatId/invite');
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> getGroupInfoByInviteCode(String code) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/groups/invite/$code'),
-    );
-    return jsonDecode(response.body);
+    final result = await client.get('/groups/invite/$code');
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> joinGroupByInviteCode(String code) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/groups/join'),
-      headers: headers,
-      body: jsonEncode({'inviteCode': code}),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/groups/join', body: {'inviteCode': code});
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> addGroupMember(String chatId, String userId) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/chats/$chatId/participants'),
-      headers: headers,
-      body: jsonEncode({'userId': userId}),
-    );
-    return jsonDecode(response.body);
+    final result = await client.post('/chats/$chatId/participants', body: {'userId': userId});
+    return result ?? {};
   }
 
   static Future<Map<String, dynamic>> deleteAccount() async {
-    final headers = await getHeaders();
-    final response = await http.delete(
-      Uri.parse('$baseUrl/me'),
-      headers: headers,
-    );
-
-    // If the backend succeeded we clear local data
-    if (response.statusCode == 200) {
+    final result = await client.delete('/me');
+    if (result != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('token');
       await prefs.remove('cached_profile');
-      // Clear bottom-nav cache as well by removing all cached stuff.
-      // Ideally we call CustomBottomNavBar.clearCache() but since it's a static UI method
-      // it's cleaner to handle this in the UI layer. The profile cache removal is good enough here.
     }
-
-    return jsonDecode(response.body);
+    return result ?? {};
   }
 }

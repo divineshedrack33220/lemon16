@@ -1,15 +1,12 @@
-import "dart:convert";
-import "package:http/http.dart" as http;
 import "package:flutter/services.dart";
-import "package:shared_preferences/shared_preferences.dart";
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
-import '../widgets/custom_bottom_nav_bar.dart';
 import '../widgets/app_logo.dart';
 import '../services/websocket_service.dart';
 import 'dart:async';
@@ -43,14 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadCurrentUserId() async {
-    final token = await ApiService.getToken();
-    if (token != null) {
-      final parts = token.split('.');
-      if (parts.length == 3) {
-        final payload = json.decode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
-        _currentUserId = payload['id'];
-      }
-    }
+    _currentUserId = authService.userId;
   }
 
   @override
@@ -84,25 +74,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadReferralLink() async {
     try {
-      // This endpoint might need to be added to your backend
-      final token = await ApiService.getToken();
-      final response = await http.get(
-        Uri.parse('${ApiService.baseUrl}/me/referral'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (mounted) {
-          setState(() {
-            _referralCode = data['referralCode'];
-            _referralUrl = data['referralUrl'];
-          });
-        }
+      final data = await ApiService.client.get('/me/referral');
+      if (mounted) {
+        setState(() {
+          _referralCode = data['referralCode'];
+          _referralUrl = data['referralUrl'];
+        });
       }
-    } catch (e) {
-      print('Error loading referral: $e');
-    }
+    } catch (_) {}
   }
 
   Future<void> _changeAvatar() async {
@@ -172,8 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    await authService.clearAuth();
     if (mounted) {
       _showToast('Logged out');
       Navigator.pushReplacementNamed(context, '/login');

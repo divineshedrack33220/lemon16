@@ -86,9 +86,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
         );
         _currentUserId = payload['userId'] ?? payload['sub'] ?? payload['id'];
       }
-    } catch (e) {
-      print('Error decoding token: $e');
-    }
+    } catch (e) {}
 
     await Future.wait([
       _loadChats(),
@@ -108,9 +106,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
           setState(() => _currentStatusIndex = index);
         }
       }
-    } catch (e) {
-      print('Error loading status: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _updateStatus() async {
@@ -551,7 +547,10 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildChatList() {
-    return ListView.builder(
+    return RefreshIndicator(
+      onRefresh: _loadChats,
+      color: const Color(0xFF00AEEF),
+      child: ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: _filteredChats.length,
       itemBuilder: (context, index) {
@@ -646,6 +645,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
           ),
         );
       },
+      ),
     );
   }
 

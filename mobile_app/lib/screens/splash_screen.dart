@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
+import '../main.dart';
 import '../services/api_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -86,7 +86,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _checkAuthStatus() async {
-    // Wait a bit for the splash animation
     await Future.delayed(const Duration(seconds: 2));
     
     if (!mounted) return;
@@ -99,25 +98,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         return;
       }
       
-      // Validate token with backend
       try {
         final profile = await ApiService.getProfile();
         
         if (profile.containsKey('_id') || profile.containsKey('id')) {
-          // Token is valid, redirect to feed
           _navigateToFeed();
         } else {
-          // Token invalid
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('token');
+          await authService.clearAuth();
           _navigateToLogin();
         }
       } catch (e) {
-        // Network error - try cached session
-        final prefs = await SharedPreferences.getInstance();
-        final userId = prefs.getString('userId');
-        
-        if (userId != null) {
+        if (authService.userId != null) {
           _navigateToFeed();
         } else {
           _navigateToLogin();
@@ -127,7 +118,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       _navigateToLogin();
     }
     
-    // Fallback redirect after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {
         _navigateToLogin();

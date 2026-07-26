@@ -1,9 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/loading_widget.dart';
 import 'dart:async';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 import '../services/notification_service.dart';
@@ -30,19 +31,8 @@ class _NearbyScreenState extends State<NearbyScreen> {
     _setupWebSocket();
   }
 
-  Future<void> _loadCurrentUserId() async {
-    final token = await ApiService.getToken();
-    if (token != null) {
-      final parts = token.split('.');
-      if (parts.length == 3) {
-        try {
-          final payload = json.decode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
-          _currentUserId = payload['userId'] ?? payload['sub'] ?? payload['id'];
-        } catch (e) {
-          print('Error decoding token: $e');
-        }
-      }
-    }
+  void _loadCurrentUserId() {
+    _currentUserId = authService.userId ?? authService.decodeUserIdFromToken();
   }
 
   @override
@@ -52,7 +42,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
   }
 
   Future<void> _loadUsers() async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = null; });
     try {
       final position = await ApiService.getCurrentPosition();
       final lat = position?.latitude ?? 0;
@@ -69,7 +59,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Failed to load users';
+          _error = 'Failed to load nearby users. Check your location permissions.';
         });
       }
     }
@@ -77,7 +67,10 @@ class _NearbyScreenState extends State<NearbyScreen> {
 
   String _formatDistance(dynamic d) {
     if (d == null) return 'Nearby';
-    return d.toString();
+    final km = (d is num) ? d.toDouble() : double.tryParse(d.toString());
+    if (km == null) return 'Nearby';
+    if (km < 1) return '${(km * 1000).round()}m away';
+    return '${km.toStringAsFixed(1)} km away';
   }
 
   @override
@@ -94,17 +87,18 @@ class _NearbyScreenState extends State<NearbyScreen> {
         actions: [IconButton(icon: const Icon(Icons.refresh, color: Colors.black), onPressed: _loadUsers)],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingShimmer(itemCount: 5, itemHeight: 72)
           : _error != null
-              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text(_error!, style: const TextStyle(fontSize: 18, color: Colors.grey)),
-                  const SizedBox(height: 16),
-                  ElevatedButton(onPressed: _loadUsers, child: const Text('Retry')),
-                ]))
+              ? AppErrorState(message: _error!, onRetry: _loadUsers)
               : _users.isEmpty
-                  ? const Center(child: Text('No users nearby', style: TextStyle(fontSize: 18, color: Colors.grey)))
+                  ? const AppEmptyState(
+                      icon: Icons.people_outline,
+                      title: 'No one nearby yet',
+                      subtitle: 'When people in your area start using Zukaping, they\'ll show up here. Try expanding your search radius or check back later.',
+                    )
                   : RefreshIndicator(
                       onRefresh: _loadUsers,
+                      color: kBrandColor,
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _users.length,
@@ -117,17 +111,28 @@ class _NearbyScreenState extends State<NearbyScreen> {
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey[200]!),
+                            ),
                             child: ListTile(
                               leading: CircleAvatar(
                                 radius: 28,
                                 backgroundImage: avatar != null && avatar.isNotEmpty ? CachedNetworkImageProvider(avatar) : null,
-                                child: avatar == null || avatar.isEmpty ? Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)) : null,
+                                backgroundColor: const Color(0xFF00AEEF).withValues(alpha: 0.15),
+                                child: avatar == null || avatar.isEmpty
+                                    ? Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: kBrandColor))
+                                    : null,
                               ),
                               title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Text(distance),
+                              subtitle: Text(distance, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                               trailing: IconButton(
-                                icon: Container(width: 40, height: 40, decoration: BoxDecoration(color: const Color(0xFF00AEEF), shape: BoxShape.circle), child: const Icon(Icons.chat_bubble_outline, color: Colors.black, size: 20)),
+                                icon: Container(
+                                  width: 40, height: 40,
+                                  decoration: const BoxDecoration(color: kBrandColor, shape: BoxShape.circle),
+                                  child: const Icon(Icons.chat_bubble_outline, color: Colors.black, size: 20),
+                                ),
                                 onPressed: () async {
                                   try {
                                     final result = await ApiService.createChat(userId);
@@ -135,7 +140,9 @@ class _NearbyScreenState extends State<NearbyScreen> {
                                     if (chatId != null && mounted) {
                                       Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: chatId)));
                                     }
-                                  } catch (_) {}
+                                  } catch (_) {
+                                    if (mounted) showAppSnackBar(context, 'Failed to create chat', isError: true);
+                                  }
                                 },
                               ),
                               onTap: () {
@@ -159,7 +166,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: const Color(0xFF00AEEF),
+        backgroundColor: kBrandColor,
       ),
     );
   }

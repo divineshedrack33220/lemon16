@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: backend
+
+  backend-test:
+    name: Backend Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - name: Build
+        run: go build ./...
+        working-directory: backend
+      - name: Vet
+        run: go vet ./...
+        working-directory: backend
+      - name: Test
+        run: go test -race -count=1 ./...
+        working-directory: backend
+
+  backend-build:
+    name: Backend Build Binary
+    runs-on: ubuntu-latest
+    needs: [backend-lint, backend-test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - name: Build binary
+        run: CGO_ENABLED=0 go build -o coded-backend .
+        working-directory: backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary
+          path: backend/coded-backend
+
+  flutter-analyze:
+    name: Flutter Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Get dependencies
+        run: flutter pub get
+        working-directory: mobile_app
+      - name: Analyze
+        run: flutter analyze --no-pub
+        working-directory: mobile_app
+
+  flutter-test:
+    name: Flutter Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Get dependencies
+        run: flutter pub get
+        working-directory: mobile_app
+      - name: Test
+        run: flutter test
+        working-directory: mobile_app
+
+  flutter-build:
+    name: Flutter Build Web
+    runs-on: ubuntu-latest
+    needs: [flutter-analyze]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Get dependencies
+        run: flutter pub get
+        working-directory: mobile_app
+      - name: Build web
+        run: flutter build web --release --no-tree-shake-icons
+        working-directory: mobile_app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web
+          path: mobile_app/build/web

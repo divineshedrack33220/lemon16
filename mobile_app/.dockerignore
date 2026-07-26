@@ -1,0 +1,11 @@
+**/.git
+**/build/
+**/android/
+**/ios/
+**/linux/
+**/macos/
+**/windows/
+**/.dart_tool/
+**/.packages
+**/pubspec.lock
+**/README.md

@@ -15,6 +15,18 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// GetJWTSecret returns the JWT secret, failing hard if not set in release mode.
+func GetJWTSecret() string {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		if os.Getenv("GIN_MODE") == "release" {
+			panic("JWT_SECRET environment variable is required in production")
+		}
+		secret = "dev-secret-change-in-prod"
+	}
+	return secret
+}
+
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Skip middleware for OPTIONS requests (CORS preflight)
@@ -59,16 +71,10 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			
-			jwtSecret := os.Getenv("JWT_SECRET")
-			if jwtSecret == "" {
-				jwtSecret = "your-secret-key-change-this-in-production"
-			}
-			return []byte(jwtSecret), nil
+			return []byte(GetJWTSecret()), nil
 		})
 
 		if err != nil {
-			fmt.Printf("JWT validation error: %v\n", err)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":   "Invalid token",
 				"message": "Token validation failed",

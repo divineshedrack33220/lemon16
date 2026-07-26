@@ -67,9 +67,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
         final payload = _decodeBase64(parts[1]);
         _currentUserId = "";  // TODO: parse from token
       }
-    } catch (e) {
-      print('Error decoding token: $e');
-    }
+    } catch (e) {}
     
     await Future.wait([
       _loadFavorites(),
@@ -94,7 +92,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
         });
       }
     } catch (e) {
-      print('Favorites load error: $e');
       if (attempt < 3) {
         await Future.delayed(Duration(seconds: 2));
         _loadFavorites(attempt: attempt + 1);
@@ -121,9 +118,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
           });
         }
       }
-    } catch (e) {
-      print('Error loading status: $e');
-    }
+    } catch (e) {}
   }
 
   void _filterFavorites() {
@@ -195,7 +190,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
         _filteredFavorites = List.from(_favorites);
       });
     } catch (e) {
-      print('Remove favorite error: $e');
       _showToast('Failed to remove favorite');
     }
   }
@@ -215,7 +209,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
         );
       }
     } catch (e) {
-      print('Start chat error: $e');
       _showToast('Failed to open chat');
     }
   }

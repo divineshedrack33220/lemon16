@@ -19,6 +19,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = true;
   bool _isSaving = false;
+  String? _error;
   
   // Controllers
   final TextEditingController _nameController = TextEditingController();
@@ -55,7 +56,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = null; });
 
     try {
       final data = await ApiService.getProfile();
@@ -80,8 +81,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       
       setState(() => _isLoading = false);
     } catch (e) {
-      _showToast('Failed to load profile');
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _error = 'Failed to load profile. Please try again.';
+      });
     }
   }
 
@@ -218,8 +221,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF00AEEF)))
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(_error!, style: const TextStyle(fontSize: 16, color: Colors.grey), textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadProfile,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,

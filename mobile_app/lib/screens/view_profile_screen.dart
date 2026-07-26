@@ -1,5 +1,3 @@
-import "dart:convert";
-import "package:http/http.dart" as http;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/api_service.dart';
@@ -39,26 +37,13 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.getProfile(); // This gets current user
-      // For viewing another user, you might need a different endpoint
-      // Assuming you have a /api/user/:id endpoint
-      final token = await ApiService.getToken();
-      final http.Response res = await http.get(
-        Uri.parse('${ApiService.baseUrl}/user/${widget.userId}'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        if (mounted) {
-          setState(() {
-            _userData = data;
-            _isLoading = false;
-            _error = null;
-          });
-        }
-      } else {
-        throw Exception('Failed to load profile');
+      final data = await ApiService.getUserById(widget.userId);
+      if (mounted) {
+        setState(() {
+          _userData = data;
+          _isLoading = false;
+          _error = null;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -84,7 +69,7 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
         });
       }
     } catch (e) {
-      print('Error loading favorites: $e');
+      // Favorites load failed silently
     }
   }
 

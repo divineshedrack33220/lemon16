@@ -1,168 +1,557 @@
-# InstaPing - Real-time Social Connection Platform
+# Zukaping — Real-time Social Connection Platform
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
-[![Flutter](https://img.shields.io/badge/Flutter-3.0+-02569B?style=flat&logo=flutter)](https://flutter.dev/)
+[![CI](https://github.com/divineshedrack33220/lemon16/actions/workflows/ci.yml/badge.svg)](https://github.com/divineshedrack33220/lemon16/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.22-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=flat&logo=flutter)](https://flutter.dev/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-4.4+-47A248?style=flat&logo=mongodb)](https://www.mongodb.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?style=flat&logo=render)](https://render.com)
 
-InstaPing is a comprehensive full-stack social networking ecosystem that enables real-time communication, location-based user discovery, and interactive feed management. It features a robust Go backend, a modern PWA-ready web frontend, and a high-performance Flutter mobile application.
-
----
-
-## ✨ Features
-
-### 🔐 Core Ecosystem
-- **Multi-Platform Support**: Seamless experience across Web and Mobile (Android/iOS).
-- **Authentication System**: Secure Email/Password registration and Google OAuth 2.0 integration.
-- **Real-time Messaging**: Instant communication powered by WebSocket with typing indicators and online status.
-- **Location-based Discovery**: Find and connect with users nearby using geolocation services.
-- **Social Feed**: Create posts, share updates, and interact with the community.
-- **Push Notifications**: Stay updated with Web Push API and mobile notification support.
-- **Media Management**: High-quality image sharing and profile customization via Cloudinary.
-
-### 🛠️ Technical Highlights
-- **RESTful API**: Scalable Gin-based backend with proper HTTP method implementation.
-- **Live WebSocket Manager**: Efficient handling of real-time events and message broadcasting.
-- **Optimized Database**: MongoDB indexing and schema design for high-performance queries.
-- **Security First**: JWT authentication, bcrypt password hashing, CORS protection, and rate limiting.
-- **Offline Capabilities**: Progressive Web App (PWA) support with service workers for the web frontend.
+Zukaping is a full-stack social networking platform enabling real-time messaging, location-based discovery, and interactive feeds. Built with Go (Gin), Flutter, MongoDB, and WebSockets.
 
 ---
 
-## 🛠️ Tech Stack
+## Architecture Overview
 
-### Backend
-- **Language**: Go 1.21+
-- **Framework**: Gin Gonic
-- **Real-time**: Gorilla WebSocket
-- **Database**: MongoDB
-- **Auth**: JWT (JSON Web Tokens)
-- **Cloud Storage**: Cloudinary SDK
-- **Notifications**: WebPush Library
+```mermaid
+graph TB
+    subgraph Client["Client Layer"]
+        Flutter["Flutter App<br/>(Android/iOS)"]
+        Web["Web Frontend<br/>(PWA)"]
+    end
 
-### Mobile App
-- **Framework**: Flutter (Dart)
-- **State Management**: Shared Preferences & Provider patterns
-- **Networking**: Http & WebSocket Channel
-- **UI Components**: Shimmer effects, Cached Network Images
-- **Features**: Geolocation, Image Picker, Share Plus
+    subgraph Gateway["Gateway Layer"]
+        Nginx["Nginx<br/>(Flutter Web)"]
+        API["Gin Router<br/>(Port 8080)"]
+    end
 
-### Web Frontend
-- **Languages**: HTML5, Vanilla JavaScript, CSS3
-- **Design**: Responsive layout with modern aesthetics
-- **PWA**: Service Workers & Manifest.json
-- **APIs**: Geolocation API, WebSocket API, Web Push API
+    subgraph Middleware["Middleware Pipeline"]
+        CORS["CORS"]
+        RateLimit["Rate Limiter"]
+        RequestID["Request ID"]
+        Logger["Request Logger"]
+        Metrics["Metrics Collector"]
+        JWT["JWT Auth"]
+    end
 
----
+    subgraph Handlers["Handler Layer"]
+        Auth["Auth Handler"]
+        User["User Handler"]
+        Post["Post Handler"]
+        Chat["Chat Handler"]
+        Message["Message Handler"]
+        Fav["Favorite Handler"]
+        Health["Health Handler"]
+    end
 
-## 🚀 Quick Start
+    subgraph Repository["Repository Layer"]
+        UserRepo["UserRepo"]
+        ChatRepo["ChatRepo"]
+        MsgRepo["MessageRepo"]
+        PostRepo["PostRepo"]
+        FavRepo["FavoriteRepo"]
+        SubRepo["SubscriptionRepo"]
+    end
 
-### Prerequisites
-- [Go 1.21+](https://go.dev/dl/)
-- [Flutter SDK](https://docs.flutter.dev/get-started/install)
-- [MongoDB](https://www.mongodb.com/try/download/community)
-- Cloudinary Account (for image uploads)
-- Google Cloud Console (for Google Auth)
+    subgraph Data["Data Layer"]
+        MongoDB[("MongoDB")]
+        Cloudinary["Cloudinary<br/>(Media)"]
+    end
 
-### Installation
+    subgraph Realtime["Real-time Layer"]
+        WS["WebSocket Manager"]
+        Rooms["Room System"]
+        Push["Web Push"]
+    end
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/divineshedrack33220/lemon16.git
-   cd lemon16
-   ```
+    Flutter --> Nginx
+    Web --> API
+    Nginx --> API
 
-2. **Backend Setup**
-   ```bash
-   cd backend
-   # Create a .env file based on the environment variables section below
-   go mod download
-   go run main.go
-   ```
+    API --> CORS --> RateLimit --> RequestID --> Logger --> Metrics
 
-3. **Mobile App Setup**
-   ```bash
-   cd ../mobile_app
-   flutter pub get
-   flutter run
-   ```
+    Metrics --> Auth
+    Metrics --> User
+    Metrics --> Post
+    Metrics --> Chat
+    Metrics --> Message
+    Metrics --> Fav
+    Metrics --> Health
 
-4. **Web Frontend**
-   The frontend is served automatically by the backend at `http://localhost:8080` (or your configured `PORT`).
+    Auth --> JWT
+    User --> JWT
+    Post --> JWT
+    Chat --> JWT
+    Message --> JWT
+    Fav --> JWT
 
----
+    Auth --> UserRepo
+    User --> UserRepo
+    Post --> PostRepo
+    Chat --> ChatRepo
+    Message --> MsgRepo
+    Fav --> FavRepo
+    Auth --> SubRepo
 
-## ⚙️ Environment Variables
+    UserRepo --> MongoDB
+    ChatRepo --> MongoDB
+    MsgRepo --> MongoDB
+    PostRepo --> MongoDB
+    FavRepo --> MongoDB
+    SubRepo --> MongoDB
 
-Create a `.env` file in the `backend/` directory:
+    User --> Cloudinary
+    Post --> Cloudinary
 
-```env
-PORT=8080
-MONGODB_URI=mongodb://localhost:27017/instaping
-JWT_SECRET=your_super_secret_key
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+    Message --> WS
+    Chat --> WS
+    WS --> Rooms
+    Message --> Push
+    Push --> MongoDB
 ```
 
 ---
 
-## 📁 Project Structure
+## Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Gin Router
+    participant MW as Middleware
+    participant H as Handler
+    participant Repo as Repository
+    participant DB as MongoDB
+    participant WS as WebSocket
+
+    C->>R: HTTP Request
+    R->>MW: CORS Check
+    MW->>MW: Rate Limit Check
+    MW->>MW: Generate Request ID
+    MW->>MW: Log Request
+    MW->>MW: Record Metrics
+    alt Protected Route
+        MW->>MW: Validate JWT
+    end
+    MW->>H: Forward to Handler
+
+    H->>Repo: Database Query
+    Repo->>DB: MongoDB Operation
+    DB-->>Repo: Result
+    Repo-->>H: Typed Response
+
+    H-->>C: JSON Response
+
+    opt Real-time Broadcast
+        H->>WS: Broadcast Event
+        WS->>WS: Route to Room
+        WS-->>C: WebSocket Message
+    end
+```
+
+---
+
+## Project Structure
 
 ```text
 lemon16/
-├── backend/            # Go Gin Server
-│   ├── database/       # MongoDB Connection & Logic
-│   ├── handlers/       # API Request Handlers
-│   ├── middleware/     # Auth & Security Middlewares
-│   ├── models/         # Data Models (User, Post, Message)
-│   ├── routes/         # API Route Definitions
-│   ├── websocket/      # WebSocket Connection Manager
-│   └── main.go         # Entry Point
-├── frontend/           # Vanilla JS Web App (Served by Go)
-│   ├── asset/          # Static Assets
-│   ├── css/            # Stylesheets
-│   ├── js/             # Frontend Logic
-│   └── *.html          # UI Pages (index, chat, profile, etc.)
-├── mobile_app/         # Flutter Application
-│   ├── lib/            # Dart Source Code
-│   │   ├── models/     # Data Classes
-│   │   ├── screens/    # UI Screens
-│   │   └── widgets/    # Reusable Components
-│   └── pubspec.yaml    # Flutter Dependencies
-└── render.yaml         # Deployment Configuration
+├── .github/workflows/     # CI/CD pipelines
+│   └── ci.yml             # Lint + Test + Build
+│
+├── backend/               # Go API server
+│   ├── config/            # Environment config loader
+│   ├── database/          # MongoDB connection + indexes
+│   ├── handlers/          # HTTP request handlers
+│   │   ├── auth.go        # Signup, Login
+│   │   ├── user.go        # Profile CRUD, nearby, search
+│   │   ├── post.go        # Feed, create post
+│   │   ├── chat.go        # Chat list, create, group mgmt
+│   │   ├── message.go     # Send, read, typing, reactions
+│   │   ├── favorite.go    # Like/unlike users
+│   │   ├── push.go        # Web Push subscriptions
+│   │   ├── google_auth.go # Google OAuth 2.0
+│   │   ├── health.go      # Health check + metrics
+│   │   └── handler.go     # DI struct
+│   ├── internal/testutil/  # Test mocks
+│   ├── middleware/         # HTTP middleware
+│   │   ├── auth.go        # JWT validation
+│   │   ├── ratelimit.go   # Sliding window rate limiter
+│   │   ├── logger.go      # Structured request logging
+│   │   ├── requestid.go   # X-Request-ID propagation
+│   │   └── metrics.go     # Request metrics collector
+│   ├── models/            # Data models (9 structs)
+│   ├── repository/        # Database access layer
+│   │   ├── interfaces.go  # Repository interfaces
+│   │   ├── repository.go  # DI aggregator
+│   │   ├── user.go        # User CRUD
+│   │   ├── chat.go        # Chat operations
+│   │   ├── message.go     # Message operations
+│   │   ├── post.go        # Post operations
+│   │   ├── favorite.go    # Favorite operations
+│   │   └── subscription.go# Push subscription ops
+│   ├── routes/            # Route definitions
+│   ├── websocket/         # WebSocket manager + rooms
+│   ├── Dockerfile         # Multi-stage Docker build
+│   └── main.go            # Entry point
+│
+├── mobile_app/            # Flutter application
+│   ├── lib/
+│   │   ├── main.dart      # App entry + DI init
+│   │   ├── models/        # Dart data classes
+│   │   ├── screens/       # UI screens (10+)
+│   │   ├── services/      # Auth, API, WebSocket
+│   │   └── widgets/       # Reusable components
+│   ├── assets/            # Logo, images
+│   ├── web/               # PWA config + icons
+│   ├── Dockerfile         # Flutter web Docker build
+│   └── pubspec.yaml       # Dart dependencies
+│
+├── render.yaml            # Render deployment config
+└── README.md              # This file
 ```
 
 ---
 
-## 🔌 API Endpoints (Quick Reference)
+## Data Model
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/signup` | `POST` | Register a new user |
-| `/api/login` | `POST` | Authenticate user & get JWT |
-| `/api/me` | `GET/PUT` | Get or update current user profile |
-| `/api/feed` | `GET` | Retrieve the global social feed |
-| `/api/post` | `POST` | Create a new community post |
-| `/api/chats` | `GET` | Get list of active conversations |
-| `/api/messages/:id`| `GET` | Fetch message history for a chat |
-| `/api/users/nearby`| `GET` | Discover users based on proximity |
-| `/ws` | `WS` | WebSocket connection for real-time events |
+```mermaid
+erDiagram
+    USER {
+        ObjectId id PK
+        string email UK
+        string username UK
+        string passwordHash
+        string authProvider
+        string name
+        string avatar
+        string bio
+        string gender
+        array interestedIn
+        array photos
+        string status
+        float latitude
+        float longitude
+        int64 birthDate
+        int64 lastSeen
+        string referralCode
+        array blockedUsers
+    }
+
+    CHAT {
+        ObjectId id PK
+        array participants
+        boolean isGroup
+        string groupName
+        string groupAvatar
+        string groupDescription
+        array adminIds
+        string inviteCode
+        string lastMessage
+        int64 lastMessageAt
+    }
+
+    MESSAGE {
+        ObjectId id PK
+        ObjectId chatId FK
+        ObjectId senderId FK
+        string content
+        string type
+        boolean isRead
+        map reactions
+        int64 createdAt
+    }
+
+    POST {
+        ObjectId id PK
+        ObjectId userId FK
+        string content
+        array media
+        string category
+        int64 createdAt
+    }
+
+    FAVORITE {
+        ObjectId id PK
+        ObjectId userId FK
+        ObjectId targetUserId FK
+        int64 createdAt
+    }
+
+    SUBSCRIPTION {
+        ObjectId id PK
+        ObjectId userId FK
+        string endpoint
+        string p256dh
+        string auth
+        int64 createdAt
+    }
+
+    USER ||--o{ CHAT : "participates in"
+    USER ||--o{ MESSAGE : "sends"
+    USER ||--o{ POST : "creates"
+    USER ||--o{ FAVORITE : "likes"
+    USER ||--o{ SUBSCRIPTION : "subscribes"
+    CHAT ||--o{ MESSAGE : "contains"
+```
 
 ---
 
-## 👤 Author
+## Authentication Flow
 
-**Divine Shedrack**
-- GitHub: [@divineshedrack33220](https://github.com/divineshedrack33220)
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API Server
+    participant DB as MongoDB
+    participant Google as Google OAuth
+
+    Note over C,API: Email/Password Signup
+    C->>API: POST /api/signup {email, password}
+    API->>DB: Check email exists
+    API->>API: bcrypt hash password
+    API->>DB: Insert user
+    API->>API: Generate JWT (24h expiry)
+    API-->>C: {token, userId, username}
+
+    Note over C,API: Email/Password Login
+    C->>API: POST /api/login {email, password}
+    API->>DB: Find user by email
+    API->>API: bcrypt.Compare
+    API->>API: Generate JWT
+    API-->>C: {token, userId, avatar}
+
+    Note over C,Google: Google OAuth
+    C->>Google: Redirect to Google consent
+    Google-->>C: Authorization code
+    C->>API: POST /api/google-auth {credential}
+    API->>Google: Verify ID token (RS256)
+    API->>DB: Find/create user
+    API->>API: Generate JWT
+    API-->>C: {token, userId, isNewUser}
+
+    Note over C,API: Protected Request
+    C->>API: GET /api/me<br/>Authorization: Bearer <token>
+    API->>API: Validate JWT (HMAC-SHA256)
+    API->>API: Extract userId from claims
+    API-->>C: User profile JSON
+```
 
 ---
 
-## 📄 License
+## WebSocket Protocol
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant WS as WebSocket Server
+    participant Room as Chat Room
 
-Built with ❤️ by Divine Shedrack
+    C->>WS: ws://host/ws?token=<jwt>
+    WS->>WS: Validate JWT
+    WS-->>C: {type: "connected", userId, time}
+
+    C->>WS: {type: "subscribe_chat", payload: {chatId}}
+    WS->>Room: Join room "chat:<chatId>"
+    WS-->>C: {type: "chat_subscribed", chatId}
+
+    C->>WS: {type: "typing_start", payload: {chatId}}
+    WS->>Room: Broadcast to chat room
+    Room-->>Other: {type: "typing_start", userId, timestamp}
+
+    Note over C,WS: Message sent via REST API
+    API->>WS: BroadcastNewMessage(payload, chatId)
+    WS->>Room: Route to chat room
+    Room-->>C: {type: "new_message", payload}
+
+    C->>WS: {type: "message_read", payload: {chatId, messageIds}}
+    WS->>Room: Broadcast read receipt
+    Room-->>Other: {type: "message_read", userId, messageIds}
+```
+
+### WebSocket Message Types
+
+| Direction | Type | Payload |
+|-----------|------|---------|
+| Server | `connected` | `{userId, message, time}` |
+| Client | `subscribe_chat` | `{chatId}` |
+| Server | `chat_subscribed` | `{chatId, userId}` |
+| Client | `typing_start` | `{chatId}` |
+| Server | `typing_start` | `{chatId, userId, timestamp}` |
+| Client | `typing_end` | `{chatId}` |
+| Server | `typing_end` | `{chatId, userId, timestamp}` |
+| Server | `new_message` | Full message object |
+| Client | `message_read` | `{chatId, messageIds}` |
+| Server | `message_read` | `{chatId, userId, messageIds, timestamp}` |
+| Server | `message_reaction` | `{messageId, chatId, userId, emoji, reactions}` |
+| Client | `ping` | — |
+| Server | `pong` | `{time}` |
+
+---
+
+## API Endpoints
+
+### Public (No Auth)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/signup` | Register with email/password |
+| `POST` | `/api/login` | Login with email/password |
+| `POST` | `/api/google-auth` | Login with Google credential |
+| `GET` | `/api/google/auth-url` | Get Google OAuth redirect URL |
+| `GET` | `/api/google/callback` | Google OAuth callback |
+| `GET` | `/api/vapid-public-key` | Get VAPID public key for push |
+| `GET` | `/api/groups/invite/:code` | Get group info by invite code |
+| `GET` | `/health` | Health check (DB ping, memory, uptime) |
+| `GET` | `/metrics` | Request metrics (internal) |
+
+### Protected (JWT Required)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/me` | Get my profile |
+| `PUT` | `/api/me` | Update my profile |
+| `DELETE` | `/api/me` | Delete my account |
+| `PUT` | `/api/me/status` | Update online status |
+| `GET` | `/api/me/referral` | Get referral code/link |
+| `GET` | `/api/user/:id` | Get user profile by ID |
+| `POST` | `/api/block` | Block a user |
+| `GET` | `/api/users/nearby` | Discover nearby users (ranked) |
+| `GET` | `/api/users/search` | Search users (rate limited) |
+| `POST` | `/api/post` | Create a post |
+| `GET` | `/api/feed` | Get social feed |
+| `GET` | `/api/user/:id/posts` | Get user's posts |
+| `GET` | `/api/my/posts` | Get my posts |
+| `POST` | `/api/favorite` | Like a user |
+| `DELETE` | `/api/favorite` | Unlike a user |
+| `GET` | `/api/favorites` | Get my favorites |
+| `GET` | `/api/matches` | Get mutual likes |
+| `GET` | `/api/chats` | List chats |
+| `POST` | `/api/chats` | Create DM or group chat |
+| `GET` | `/api/chats/:id` | Get chat details |
+| `PUT` | `/api/chats/:id` | Update group chat |
+| `POST` | `/api/chats/:id/admin` | Promote to admin |
+| `DELETE` | `/api/chats/:id/participants/:userId` | Remove from group |
+| `POST` | `/api/chats/:id/invite` | Generate invite code |
+| `POST` | `/api/chats/:id/participants` | Add to group |
+| `POST` | `/api/groups/join` | Join via invite code |
+| `POST` | `/api/message` | Send message |
+| `GET` | `/api/messages/:id` | Get messages for chat |
+| `POST` | `/api/messages/:id/read` | Mark messages as read |
+| `POST` | `/api/typing` | Send typing indicator |
+| `POST` | `/api/messages/:id/react` | React to message |
+| `POST` | `/api/upload-photo` | Upload photo (Cloudinary) |
+| `POST` | `/api/subscribe` | Subscribe to push notifications |
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Go 1.22+
+- Flutter SDK 3.x
+- MongoDB 4.4+ (or use the tarball method below)
+- (Optional) Cloudinary account
+- (Optional) Google Cloud Console project
+
+### Quick Start
+
+```bash
+# 1. Clone
+git clone https://github.com/divineshedrack33220/lemon16.git
+cd lemon16
+
+# 2. Start MongoDB (tarball method — no sudo needed)
+curl -fsSL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.5.tgz | tar -xz -C /tmp
+/tmp/mongodb-*/bin/mongod --dbpath /tmp/mongo_data --port 27017 --fork --logpath /tmp/mongod.log
+
+# 3. Start Backend
+cd backend
+go build -o /tmp/coded-server .
+GIN_MODE=debug /tmp/coded-server &
+
+# 4. Start Flutter Web (optional)
+cd ../mobile_app
+flutter build web --no-tree-shake-icons
+python3 -m http.server 8081 --directory build/web
+
+# 5. Open http://localhost:8081
+```
+
+### Run Tests
+
+```bash
+cd backend
+go test ./...          # Run all tests
+go test -race ./...    # With race detector
+go test -v ./middleware # Verbose, specific package
+```
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | `8080` | Server port |
+| `GIN_MODE` | No | `release` | `debug`, `release`, or `test` |
+| `JWT_SECRET` | **Yes** (release) | `dev-secret-change-in-prod` | HMAC signing key |
+| `MONGODB_URI` | No | `mongodb://localhost:27017` | MongoDB connection string |
+| `CLOUDINARY_URL` | No | — | Cloudinary URL for media |
+| `GOOGLE_CLIENT_ID` | No | — | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | No | — | Google OAuth client secret |
+| `VAPID_PUBLIC_KEY` | No | Auto-generated | Web Push public key |
+| `VAPID_PRIVATE_KEY` | No | Auto-generated | Web Push private key |
+| `SMTP_HOST` | No | — | SMTP server for email notifications |
+| `SMTP_PORT` | No | 587 | SMTP port |
+| `SMTP_USER` | No | — | SMTP username |
+| `SMTP_PASS` | No | — | SMTP password |
+| `SMTP_FROM` | No | — | Sender email address |
+| `TWILIO_ACCOUNT_SID` | No | — | Twilio SMS account SID |
+| `TWILIO_AUTH_TOKEN` | No | — | Twilio auth token |
+| `TWILIO_PHONE` | No | — | Twilio phone number for SMS |
+| `ALLOWED_ORIGINS` | No | — | Comma-separated CORS origins |
+| `RENDER` | No | — | Set on Render.com |
+
+---
+
+## Deployment
+
+### Render (Docker)
+
+The `render.yaml` defines two Docker services:
+
+1. **coded-backend** — Go API server (port 8080)
+2. **coded-frontend** — Flutter web via Nginx (port 8081)
+
+Push to `main` branch to trigger auto-deploy via GitHub Actions.
+
+### Docker (Manual)
+
+```bash
+# Backend
+docker build -t coded-backend -f backend/Dockerfile backend/
+docker run -p 8080:8080 -e JWT_SECRET=... -e MONGODB_URI=... coded-backend
+
+# Frontend
+docker build -t coded-frontend -f mobile_app/Dockerfile mobile_app/
+docker run -p 8081:8081 coded-frontend
+```
+
+---
+
+## Testing
+
+| Package | Tests | Coverage |
+|---------|-------|----------|
+| `middleware` | 13 | JWT auth, rate limiter, request ID |
+| `handlers` | 9 | Auth flows, favorites, health check |
+| `config` | 5 | Env loading, defaults, validation |
+| **Total** | **27** | Core auth + middleware paths |
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+Built by Divine Shedrack

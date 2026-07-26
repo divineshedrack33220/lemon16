@@ -1,155 +1,185 @@
 package routes
 
 import (
-    "os"
-    "strings"
-    "time"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
-    "coded/handlers"
-    "coded/middleware"
+	"coded/handlers"
+	"coded/middleware"
 
-    "github.com/gin-contrib/cors"
-    "github.com/gin-gonic/gin"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter() *gin.Engine {
-    router := gin.Default()
+const webDirEnv = "WEB_DIR"
 
-    // Add health check endpoint for testing
-    router.GET("/api/health", func(c *gin.Context) {
-        c.JSON(200, gin.H{
-            "status":  "ok",
-            "message": "Coded API is running",
-            "time":    time.Now().Unix(),
-            "ws":      "WebSocket available at /ws",
-            "google":  "Google OAuth available",
-        })
-    })
+func SetupRouter(h *handlers.Handler, allowedOrigins []string) *gin.Engine {
+	router := gin.New()
+	router.Use(gin.Recovery())
 
-    // CORS configuration - Updated for Render
-    allowOrigins := []string{
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "http://localhost:5500",
-        "http://localhost:3000",
-        "http://127.0.0.1:8080",
-        "http://127.0.0.1:5500",
-        "http://localhost:10000",
-        "http://127.0.0.1:10000",
-        "http://localhost:*",
-        "https://coded-backend.onrender.com",
-        "https://*.onrender.com",
-    }
-    
-    // Add allowed origins from environment variable
-    if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
-        allowOrigins = append(allowOrigins, strings.Split(envOrigins, ",")...)
-    }
+	router.Use(middleware.RequestID())
+	router.Use(middleware.RequestLogger())
+	router.Use(middleware.MetricsMiddleware())
 
-    router.Use(cors.New(cors.Config{
-        AllowOriginFunc: func(origin string) bool {
-		return true // Allow all for development
-	},
-        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
-        ExposeHeaders:    []string{"Content-Length", "Content-Type"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    }))
+	// Health check with live DB ping
+	router.GET("/health", h.HealthCheck)
+	router.GET("/api/health", h.HealthCheck)
 
-    // Public routes (no auth required)
-    router.POST("/api/signup", handlers.Signup)
-    router.POST("/api/login", handlers.Login)
-    router.GET("/api/vapid-public-key", handlers.GetVapidPublicKey)
-    router.GET("/api/groups/invite/:code", handlers.GetGroupInfoByInviteCode)
-    
-    // Google OAuth routes
-    router.GET("/api/google/auth-url", handlers.GetGoogleAuthURL)
-    router.GET("/api/google/callback", handlers.GoogleOAuthCallback)
-    router.POST("/api/google-auth", handlers.GoogleAuthWithCredential)
+	// Metrics endpoint (internal only)
+	router.GET("/metrics", func(c *gin.Context) {
+		m := middleware.AppMetrics
+		snapshot := m.Snapshot()
+		c.JSON(http.StatusOK, snapshot)
+	})
 
-    // Protected routes group
-    protected := router.Group("/api")
-    protected.Use(middleware.JWTAuthMiddleware())
+	// CORS
+	router.Use(cors.New(cors.Config{
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "" {
+				return true
+			}
+			for _, allowed := range allowedOrigins {
+				if allowed == "*" {
+					return true
+				}
+				if origin == allowed {
+					return true
+				}
+				if strings.HasSuffix(allowed, ":*") {
+					prefix := allowed[:len(allowed)-1]
+					if strings.HasPrefix(origin, prefix) {
+						return true
+					}
+				}
+				if strings.Contains(allowed, "*.") {
+					pattern := strings.Replace(allowed, "*.", "", 1)
+					if strings.HasSuffix(origin, pattern) {
+						return true
+					}
+				}
+			}
+			return false
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With", "X-Request-ID"},
+		ExposeHeaders:    []string{"Content-Length", "Content-Type", "X-Request-ID"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
-    // Profile
-    protected.GET("/me", handlers.GetMyProfile)
-    protected.PUT("/me", handlers.UpdateMyProfile)
-    protected.DELETE("/me", handlers.DeleteMyProfile)
-    protected.GET("/user/:id", handlers.GetUser)
-    protected.PUT("/me/status", handlers.UpdateUserStatus)
-    protected.POST("/block", handlers.BlockUser)
+	// Static web files (must be before catch-all NoRoute)
+	webDir := os.Getenv(webDirEnv)
+	if webDir == "" {
+		webDir = "./web"
+	}
+	if _, err := os.Stat(webDir); err == nil {
+		router.Static("/assets", filepath.Clean(webDir)+"/assets")
+		router.Static("/canvaskit", filepath.Clean(webDir)+"/canvaskit")
+		router.Static("/icons", filepath.Clean(webDir)+"/icons")
+		router.Static("/flutter.js", filepath.Clean(webDir)+"/flutter.js")
+		router.Static("/flutter_bootstrap.js", filepath.Clean(webDir)+"/flutter_bootstrap.js")
+		router.Static("/flutter_service_worker.js", filepath.Clean(webDir)+"/flutter_service_worker.js")
+		router.Static("/main.dart.js", filepath.Clean(webDir)+"/main.dart.js")
+		router.Static("/manifest.json", filepath.Clean(webDir)+"/manifest.json")
+		router.Static("/version.json", filepath.Clean(webDir)+"/version.json")
+	}
 
-    // Test endpoint
-    protected.GET("/test-auth", handlers.TestAuth)
+	// SPA fallback - serve index.html for any unmatched web route
+	router.NoRoute(func(c *gin.Context) {
+		if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
+			c.JSON(404, gin.H{
+				"error":   "Endpoint not found",
+				"path":    c.Request.URL.Path,
+				"message": "Check the API documentation for available endpoints",
+			})
+			return
+		}
+		if c.Request.URL.Path == "/ws" {
+			c.JSON(404, gin.H{
+				"error": "WebSocket endpoint not found",
+				"path":  c.Request.URL.Path,
+			})
+			return
+		}
+		// Serve SPA index.html for client-side routing
+		if webDir != "" {
+			indexPath := filepath.Join(webDir, "index.html")
+			if _, err := os.Stat(indexPath); err == nil {
+				c.Header("Cache-Control", "no-cache")
+				c.File(indexPath)
+				return
+			}
+		}
+		c.JSON(404, gin.H{
+			"error":   "Not found",
+			"message": "Resource not found",
+		})
+	})
 
-    // Users
-    protected.GET("/users/nearby", handlers.GetNearbyUsers)
-    protected.GET("/users/search", handlers.SearchUsers)
+	authLimiter := middleware.NewIPRateLimiter(10, time.Minute)
+	searchLimiter := middleware.NewIPRateLimiter(30, time.Minute)
 
-    // Posts
-    protected.POST("/post", handlers.CreatePost)
-    protected.GET("/feed", handlers.GetFeed)
-    protected.GET("/user/:id/posts", handlers.GetUserPosts)
-    protected.GET("/my/posts", handlers.GetMyPosts)
+	// Public routes
+	router.POST("/api/signup", middleware.RateLimitWithLimiter(authLimiter), h.Signup)
+	router.POST("/api/login", middleware.RateLimitWithLimiter(authLimiter), h.Login)
+	router.GET("/api/vapid-public-key", h.GetVapidPublicKey)
+	router.GET("/api/groups/invite/:code", h.GetGroupInfoByInviteCode)
 
-    // Favorites
-    protected.POST("/favorite", handlers.AddFavorite)
-    protected.DELETE("/favorite", handlers.RemoveFavorite)
-    protected.GET("/favorites", handlers.GetFavorites)
+	router.GET("/api/google/auth-url", h.GetGoogleAuthURL)
+	router.GET("/api/google/callback", h.GoogleOAuthCallback)
+	router.POST("/api/google-auth", middleware.RateLimitWithLimiter(authLimiter), h.GoogleAuthWithCredential)
 
-    // Matches
-    protected.GET("/matches", handlers.GetMatches)
+	// Protected routes
+	protected := router.Group("/api")
+	protected.Use(middleware.JWTAuthMiddleware())
 
-    // Chats
-    protected.GET("/chats", handlers.GetChatList)
-    protected.POST("/chats", handlers.CreateChat)
-    protected.GET("/chats/:id", handlers.GetChat)
-    protected.PUT("/chats/:id", handlers.UpdateGroupChat)
-    protected.POST("/chats/:id/admin", handlers.PromoteToAdmin)
-    protected.DELETE("/chats/:id/participants/:userId", handlers.RemoveGroupMember)
-    protected.POST("/chats/:id/invite", handlers.GenerateGroupInviteCode)
-    protected.POST("/groups/join", handlers.JoinGroupByInviteCode)
-    protected.POST("/chats/:id/participants", handlers.AddGroupMember)
+	protected.GET("/me", h.GetMyProfile)
+	protected.PUT("/me", h.UpdateMyProfile)
+	protected.DELETE("/me", h.DeleteMyProfile)
+	protected.GET("/user/:id", h.GetUser)
+	protected.PUT("/me/status", h.UpdateUserStatus)
+	protected.POST("/block", h.BlockUser)
 
-    // Messages
-    protected.POST("/message", handlers.SendMessage)
-    protected.GET("/messages/:id", handlers.GetMessages)
-    protected.POST("/messages/:id/read", handlers.MarkAsRead)
-    protected.POST("/typing", handlers.SendTypingIndicator)
-    protected.POST("/messages/:id/react", handlers.ReactToMessage)
+	protected.GET("/test-auth", h.TestAuth)
 
-    // Photo upload
-    protected.POST("/upload-photo", handlers.UploadPhoto)
+	protected.GET("/users/nearby", h.GetNearbyUsers)
+	protected.GET("/users/search", middleware.RateLimitWithLimiter(searchLimiter), h.SearchUsers)
 
-    // Referral
-    protected.GET("/me/referral", handlers.GetReferral)
+	protected.POST("/post", h.CreatePost)
+	protected.GET("/feed", h.GetFeed)
+	protected.GET("/user/:id/posts", h.GetUserPosts)
+	protected.GET("/my/posts", h.GetMyPosts)
 
-    // Push subscriptions
-    protected.POST("/subscribe", handlers.SubscribePush)
+	protected.POST("/favorite", h.AddFavorite)
+	protected.DELETE("/favorite", h.RemoveFavorite)
+	protected.GET("/favorites", h.GetFavorites)
 
-    // Add a catch-all for undefined API routes
-    router.NoRoute(func(c *gin.Context) {
-        // If it's an API route, return JSON 404
-        if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
-            c.JSON(404, gin.H{
-                "error":   "Endpoint not found",
-                "path":    c.Request.URL.Path,
-                "message": "Check the API documentation for available endpoints",
-            })
-            return
-        }
-        // For WebSocket routes
-        if c.Request.URL.Path == "/ws" {
-            c.JSON(404, gin.H{
-                "error":   "WebSocket endpoint not found",
-                "path":    c.Request.URL.Path,
-            })
-            return
-        }
-        // For non-API routes, let Gin handle it
-        c.Next()
-    })
+	protected.GET("/matches", h.GetMatches)
 
-    return router
+	protected.GET("/chats", h.GetChatList)
+	protected.POST("/chats", h.CreateChat)
+	protected.GET("/chats/:id", h.GetChat)
+	protected.PUT("/chats/:id", h.UpdateGroupChat)
+	protected.POST("/chats/:id/admin", h.PromoteToAdmin)
+	protected.DELETE("/chats/:id/participants/:userId", h.RemoveGroupMember)
+	protected.POST("/chats/:id/invite", h.GenerateGroupInviteCode)
+	protected.POST("/groups/join", h.JoinGroupByInviteCode)
+	protected.POST("/chats/:id/participants", h.AddGroupMember)
+
+	protected.POST("/message", h.SendMessage)
+	protected.GET("/messages/:id", h.GetMessages)
+	protected.POST("/messages/:id/read", h.MarkAsRead)
+	protected.POST("/typing", h.SendTypingIndicator)
+	protected.POST("/messages/:id/react", h.ReactToMessage)
+
+	protected.POST("/upload-photo", h.UploadPhoto)
+
+	protected.GET("/me/referral", h.GetReferral)
+
+	protected.POST("/subscribe", h.SubscribePush)
+
+	return router
 }

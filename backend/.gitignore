@@ -54,4 +54,4 @@ go.work
 go.work.sum
 
 # Render deployment
-render.yaml
+# render.yaml  # tracked at repo root

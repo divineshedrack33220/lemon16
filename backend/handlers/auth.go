@@ -2,12 +2,9 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"os"
 	"time"
 
-	"coded/database"
 	"coded/middleware"
 	"coded/models"
 
@@ -30,40 +27,25 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func Signup(c *gin.Context) {
-	// Add request logging
-	fmt.Printf("[%s] 📝 POST /api/signup received\n", time.Now().Format("15:04:05"))
-	
+func (h *Handler) Signup(c *gin.Context) {
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("❌ Bad request: %v\n", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request data",
-			"details": err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 		return
 	}
 
-	fmt.Printf("📝 Signup attempt for email: %s\n", req.Email)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	usersColl := database.Client.Database("coded").Collection("users")
-
-	// Check if user already exists
-	var existingUser models.User
-	err := usersColl.FindOne(ctx, bson.M{"email": req.Email}).Decode(&existingUser)
-	if err == nil {
-		fmt.Printf("⚠️  Email already in use: %s\n", req.Email)
+	existing, err := h.Repos.Users.FindByEmail(ctx, req.Email)
+	if err == nil && existing != nil {
 		c.JSON(http.StatusConflict, gin.H{
 			"error":   "Email already registered",
 			"message": "Please use a different email or login instead",
 		})
 		return
 	}
-	if err != mongo.ErrNoDocuments {
-		fmt.Printf("❌ Database error checking email: %v\n", err)
+	if err != nil && err != mongo.ErrNoDocuments {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Database error",
 			"message": "Please try again later",
@@ -71,10 +53,8 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		fmt.Printf("❌ Failed to hash password: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Server error",
 			"message": "Failed to process password",
@@ -83,7 +63,6 @@ func Signup(c *gin.Context) {
 	}
 	hashed := string(hashedPassword)
 
-	// Create new user
 	user := models.User{
 		ID:           primitive.NewObjectID(),
 		Email:        req.Email,
@@ -102,10 +81,7 @@ func Signup(c *gin.Context) {
 		BirthDate:    0,
 	}
 
-	// Insert user
-	_, err = usersColl.InsertOne(ctx, user)
-	if err != nil {
-		fmt.Printf("❌ Failed to insert user: %v\n", err)
+	if err := h.Repos.Users.Create(ctx, &user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Database error",
 			"message": "Failed to create user account",
@@ -114,21 +90,12 @@ func Signup(c *gin.Context) {
 	}
 
 	if req.InviteCode != "" {
-		chatsColl := database.Client.Database("coded").Collection("chats")
-		_, chatErr := chatsColl.UpdateOne(ctx,
-			bson.M{"inviteCode": req.InviteCode, "isGroup": true},
-			bson.M{"$addToSet": bson.M{"participants": user.ID}},
-		)
-		if chatErr != nil {
-			fmt.Printf("⚠️ Failed to auto-join group by inviteCode: %v\n", chatErr)
-		} else {
-			fmt.Printf("✅ New user %s auto-joined group via inviteCode %s\n", user.Email, req.InviteCode)
+		chat, chatErr := h.Repos.Chats.FindByInviteCode(ctx, req.InviteCode)
+		if chatErr == nil && chat != nil {
+			_ = h.Repos.Chats.AddParticipant(ctx, chat.ID, user.ID)
 		}
 	}
 
-	fmt.Printf("✅ User created: %s (ID: %s)\n", req.Email, user.ID.Hex())
-
-	// Generate JWT token
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &middleware.Claims{
 		UserID: user.ID.Hex(),
@@ -139,23 +106,14 @@ func Signup(c *gin.Context) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "your-secret-key-change-this-in-production"
-		fmt.Println("⚠️  Using default JWT secret. Set JWT_SECRET environment variable!")
-	}
-	
-	tokenString, err := token.SignedString([]byte(jwtSecret))
+	tokenString, err := token.SignedString([]byte(h.Cfg.JWTSecret))
 	if err != nil {
-		fmt.Printf("❌ Failed to generate token: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Server error",
 			"message": "Failed to generate authentication token",
 		})
 		return
 	}
-
-	fmt.Printf("✅ Signup completed successfully for: %s\n", req.Email)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":  "User created successfully",
@@ -166,33 +124,18 @@ func Signup(c *gin.Context) {
 	})
 }
 
-func Login(c *gin.Context) {
-	// Add request logging
-	fmt.Printf("[%s] 🔐 POST /api/login received\n", time.Now().Format("15:04:05"))
-	
+func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("❌ Bad request: %v\n", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request data",
-			"details": err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 		return
 	}
 
-	fmt.Printf("📝 Login attempt for email: %s\n", req.Email)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	usersColl := database.Client.Database("coded").Collection("users")
-
-	// Find user by email
-	var user models.User
-	err := usersColl.FindOne(ctx, bson.M{"email": req.Email}).Decode(&user)
+	user, err := h.Repos.Users.FindByEmail(ctx, req.Email)
 	if err == mongo.ErrNoDocuments {
-		fmt.Printf("❌ User not found: %s\n", req.Email)
-		// Use same error message for security (don't reveal if email exists)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "Authentication failed",
 			"message": "Invalid email or password",
@@ -200,7 +143,6 @@ func Login(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		fmt.Printf("❌ Database error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Database error",
 			"message": "Please try again later",
@@ -208,11 +150,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("✅ User found: %s (ID: %s)\n", req.Email, user.ID.Hex())
-
-	// Check password
 	if user.PasswordHash == nil {
-		fmt.Printf("❌ No password hash for user: %s\n", req.Email)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "Authentication failed",
 			"message": "Invalid email or password",
@@ -220,9 +158,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password))
-	if err != nil {
-		fmt.Printf("❌ Invalid password for: %s\n", req.Email)
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "Authentication failed",
 			"message": "Invalid email or password",
@@ -230,14 +166,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("✅ Password correct for: %s\n", req.Email)
+	h.Repos.Users.Update(ctx, user.ID, bson.M{"$set": bson.M{"lastSeen": time.Now().Unix()}})
 
-	// Update last seen time
-	usersColl.UpdateOne(ctx, bson.M{"_id": user.ID}, bson.M{
-		"$set": bson.M{"lastSeen": time.Now().Unix()},
-	})
-
-	// Generate JWT token
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &middleware.Claims{
 		UserID: user.ID.Hex(),
@@ -248,23 +178,14 @@ func Login(c *gin.Context) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "your-secret-key-change-this-in-production"
-		fmt.Println("⚠️  Using default JWT secret. Set JWT_SECRET environment variable!")
-	}
-	
-	tokenString, err := token.SignedString([]byte(jwtSecret))
+	tokenString, err := token.SignedString([]byte(h.Cfg.JWTSecret))
 	if err != nil {
-		fmt.Printf("❌ Failed to generate token: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Server error",
 			"message": "Failed to generate authentication token",
 		})
 		return
 	}
-
-	fmt.Printf("✅ Login successful for: %s, token generated\n", req.Email)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token":    tokenString,
@@ -274,13 +195,5 @@ func Login(c *gin.Context) {
 		"avatar":   user.Avatar,
 		"message":  "Login successful",
 		"expires":  expirationTime.Unix(),
-	})
-}
-
-// Add this test endpoint to verify handlers are working
-func TestHandler(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Handlers are working correctly",
-		"time":    time.Now().Unix(),
 	})
 }

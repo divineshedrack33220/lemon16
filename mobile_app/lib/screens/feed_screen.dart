@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 import '../services/sound_service.dart';
@@ -92,17 +91,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
       return;
     }
 
-    try {
-      final parts = token.split('.');
-      if (parts.length == 3) {
-        final payload = json.decode(
-          utf8.decode(base64.decode(base64.normalize(parts[1])))
-        );
-        _currentUserId = payload['userId'] ?? payload['sub'] ?? payload['id'];
-      }
-    } catch (e) {
-      print('Error decoding token: $e');
-    }
+    _currentUserId = authService.userId ?? authService.decodeUserIdFromToken();
 
     _setupWebSocket();
     
@@ -136,11 +125,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
           'latitude': position.latitude,
           'longitude': position.longitude,
         });
-        print('📍 Location auto-updated');
         _loadFeed(); // Refresh to see new nearby people
       }
     } catch (e) {
-      print('Failed to auto-update location: $e');
+      // Location update failed silently
     }
   }
 
@@ -295,12 +283,11 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
         });
       }
     } catch (e) {
-      print('Error loading favorites: $e');
+      // Favorites load failed silently
     }
   }
 
   Future<void> _loadFeed() async {
-    print("📡 Loading feed...");
     try {
       final posts = await ApiService.getFeed();
       if (mounted) {
@@ -340,7 +327,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
         });
       }
     } catch (e) {
-      print('Error auto-loading nearby users: $e');
+      // Nearby users auto-load failed
     }
   }
 
@@ -355,7 +342,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
         }
       }
     } catch (e) {
-      print('Error loading status: $e');
+      // Status load failed silently
     }
   }
 
@@ -429,7 +416,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
             });
           }
         } catch (e) {
-          print('Scan attempt $i failed: $e');
+          // Individual scan attempt failed
         }
       }
     } catch (e) {

@@ -1,66 +1,163 @@
-# 🚀 Zukaping Mobile
+# Zukaping Flutter App
 
-The mobile client for the **Zukaping ecosystem**, built with **Flutter**. This application provides a high-performance, cross-platform experience with real-time location features, dynamic chat, and instant social discovery.
+Cross-platform mobile app (Android/iOS) and web PWA built with Flutter.
 
-## 🌟 Key Features
+## Architecture
 
-*   **📡 Radar Discovery**: Actively scan for and discover nearby users using real-time geolocation.
-*   **💬 Live Chat**: Instant messaging powered by WebSockets, featuring typing indicators, read receipts, and reactions.
-*   **📷 Media Sharing**: Capture or upload photos directly into chats with a smooth, optimized UI.
-*   **📱 Glassmorphic UI**: Beautiful, modern interface with fluid animations and responsive design.
-*   **🔐 Seamless Authentication**: Secure email/password and Google OAuth integration.
-*   **✨ Profile Management**: Dynamic user profiles with customizable avatars, status indicators (e.g., "Available", "Ghost", "Super"), and multi-photo galleries.
+```mermaid
+graph TB
+    subgraph Entry["App Entry"]
+        Main["main.dart"]
+    end
 
-## 🛠️ Technology Stack
+    subgraph DI["Service Layer"]
+        AuthSvc["AuthService<br/>(Secure Storage)"]
+        APIClient["ApiClient<br/>(Retry + Timeout)"]
+        APIService["ApiService<br/>(REST Methods)"]
+        WSService["WebSocketService<br/>(Real-time)"]
+    end
 
-*   **Framework**: [Flutter](https://flutter.dev/) (Dart)
-*   **State Management**: `setState` with localized stream controllers for WebSockets.
-*   **Networking**: `http` for REST APIs, `web_socket_channel` for real-time events.
-*   **Location**: `geolocator` for GPS coordination.
-*   **Media**: `image_picker` and `cached_network_image`.
+    subgraph UI["Screen Layer"]
+        Splash["SplashScreen"]
+        Login["LoginScreen"]
+        Signup["SignupScreen"]
+        Feed["FeedScreen"]
+        Chat["ChatScreen"]
+        ChatsList["ChatsScreen"]
+        Profile["ProfileScreen"]
+        EditProfile["EditProfileScreen"]
+        Nearby["NearbyScreen"]
+        Favorites["FavoritesScreen"]
+        ViewProfile["ViewProfileScreen"]
+    end
 
-## 🚀 Getting Started
+    subgraph Widgets["Shared Widgets"]
+        Empty["AppEmptyState"]
+        Error["AppErrorState"]
+        Shimmer["AppLoadingShimmer"]
+        Spinner["AppFullScreenSpinner"]
+        SnackBar["showAppSnackBar"]
+    end
 
-### Prerequisites
-*   Flutter SDK (v3.19+)
-*   Android Studio / Xcode
-*   An active running instance of the **Zukaping Go Backend** (running on port `10000`).
+    Main --> AuthSvc
+    Main --> APIClient
+    Main --> APIService
+    Main --> WSService
 
-### Installation
+    AuthSvc --> APIClient
+    APIClient --> APIService
+    AuthSvc --> WSService
 
-1.  **Clone & Install Dependencies**
-    ```bash
-    flutter pub get
-    ```
+    APIService --> UI
+    WSService --> UI
+    UI --> Widgets
+```
 
-2.  **Environment Setup**
-    The app uses a platform-aware API service out-of-the-box.
-    *   **Web (`localhost`)**: Auto-connects to `http://localhost:10000`
-    *   **Android Emulator**: Auto-connects to `http://10.0.2.2:10000`
-    
-    *To override the API URL for physical devices or production, use:*
-    ```bash
-    flutter run --dart-define=API_URL=https://your-production-url.com/api
-    ```
+## Service Layer
 
-3.  **Run the App**
-    ```bash
-    flutter run -d chrome  # For Web testing
-    # OR
-    flutter run            # For Emulator/Device
-    ```
+### AuthService
+- Stores JWT and userId in `flutter_secure_storage`
+- Migrates legacy `SharedPreferences` tokens
+- Provides `token`, `userId`, `isLoggedIn`, `logout()`
 
-## 📁 Project Structure
+### ApiClient
+- HTTP client with automatic retry (3x, exponential backoff)
+- Connect timeout: 10s, Request timeout: 15s
+- Auto-logout on 401 responses
+- Falls back to cache on network errors
 
-*   `/lib/models/`: Strongly typed Dart data models (e.g., `Message`, `User`, `Post`).
-*   `/lib/screens/`: The core views (Feed, Chat, Profile, Onboarding).
-*   `/lib/services/`: Core logic abstractions.
-    *   `api_service.dart`: Centralized REST API client.
-    *   `websocket_service.dart`: Singleton WebSocket manager.
-*   `/lib/widgets/`: Reusable UI components (Bottom Nav, App Logo).
+### ApiService
+- All REST API calls go through `ApiClient`
+- No raw `http` package usage anywhere in services/screens
+- Methods: `signup()`, `login()`, `getFeed()`, `sendMessage()`, etc.
 
-## 🤝 Contributing
-Ensure you run `flutter analyze` and test both WebSocket and REST connectivity before committing major UI or state changes.
+### WebSocketService
+- Auto-reconnect with backoff
+- Uses `AuthService` for JWT
+- Emits typed events to screens
 
-## 🔗 Related
-For backend services, MongoDB schemas, and web frontend details, refer to the [Root Repository README](../README.md).
+## Screens
+
+| Screen | Description |
+|--------|-------------|
+| `SplashScreen` | Auto-login check, redirect to Login or Feed |
+| `LoginScreen` | Email/password + Google OAuth |
+| `SignupScreen` | Email/password registration |
+| `FeedScreen` | Social feed with pull-to-refresh |
+| `ChatsScreen` | Chat list with refresh indicator |
+| `ChatScreen` | Real-time messaging with typing indicators |
+| `ProfileScreen` | View own profile |
+| `EditProfileScreen` | Edit name, bio, photos |
+| `ViewProfileScreen` | View other user's profile |
+| `NearbyScreen` | Location-based user discovery with shimmer loading |
+| `FavoritesScreen` | Liked users list |
+
+## Shared Widgets
+
+| Widget | Purpose |
+|--------|---------|
+| `AppEmptyState` | Empty list placeholder with icon + message |
+| `AppErrorState` | Error display with retry button |
+| `AppLoadingShimmer` | Shimmer loading skeleton |
+| `AppFullScreenSpinner` | Full-screen loading indicator |
+| `showAppSnackBar` | Consistent snackbar notifications |
+
+## Project Structure
+
+```text
+mobile_app/
+├── lib/
+│   ├── main.dart
+│   ├── models/
+│   │   ├── user.dart
+│   │   ├── post.dart
+│   │   ├── chat.dart
+│   │   └── message.dart
+│   ├── screens/
+│   │   ├── splash_screen.dart
+│   │   ├── login_screen.dart
+│   │   ├── signup_screen.dart
+│   │   ├── feed_screen.dart
+│   │   ├── chats_screen.dart
+│   │   ├── chat_screen.dart
+│   │   ├── profile_screen.dart
+│   │   ├── edit_profile_screen.dart
+│   │   ├── view_profile_screen.dart
+│   │   ├── nearby_screen.dart
+│   │   └── favorites_screen.dart
+│   ├── services/
+│   │   ├── auth_service.dart
+│   │   ├── api_client.dart
+│   │   ├── api_service.dart
+│   │   └── websocket_service.dart
+│   └── widgets/
+│       └── loading_widget.dart
+├── assets/
+│   ├── logo.png
+│   └── icon-*.png
+├── web/
+│   ├── index.html
+│   ├── manifest.json
+│   └── favicon.png
+├── Dockerfile
+└── pubspec.yaml
+```
+
+## Running
+
+```bash
+# Dependencies
+flutter pub get
+
+# Run on device
+flutter run
+
+# Build for web
+flutter build web --no-tree-shake-icons
+
+# Analyze
+flutter analyze
+
+# Test
+flutter test
+```

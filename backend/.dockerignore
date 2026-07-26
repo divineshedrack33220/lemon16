@@ -1,0 +1,10 @@
+**/.git
+**/.github
+**/.gitignore
+**/README.md
+**/README.md.local
+**/*_test.go
+**/.golangci.yml
+**/.env
+**/lemon16-backend
+**/coded-backend

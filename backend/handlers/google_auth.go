@@ -1,362 +1,396 @@
 package handlers
 
 import (
-    "context"
-    "encoding/json"
-    "fmt"
-    "io"
-    "log"
-    "net/http"
-    "os"
-    "time"
+	"context"
+	"crypto/rsa"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"math/big"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
-    "coded/database"
-    "coded/middleware"
-    "coded/models"
+	"coded/middleware"
+	"coded/models"
 
-    "github.com/gin-gonic/gin"
-    "github.com/golang-jwt/jwt/v5"
-    "go.mongodb.org/mongo-driver/bson"
-    "go.mongodb.org/mongo-driver/bson/primitive"
-    "go.mongodb.org/mongo-driver/mongo"
-    "golang.org/x/oauth2"
-    "golang.org/x/oauth2/google"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
-// Google OAuth Config
-var (
-    googleOAuthConfig *oauth2.Config
-)
+var googleOAuthConfig *oauth2.Config
 
-// Initialize Google OAuth
-func init() {
-    clientID := os.Getenv("GOOGLE_CLIENT_ID")
-    clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-    
-    if clientID != "" && clientSecret != "" {
-        // Get redirect URL from environment or use default
-        redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
-        if redirectURL == "" {
-            redirectURL = "https://coded-backend.onrender.com/api/google/callback"
-        }
-        
-        googleOAuthConfig = &oauth2.Config{
-            ClientID:     clientID,
-            ClientSecret: clientSecret,
-            RedirectURL:  redirectURL,
-            Scopes: []string{
-                "https://www.googleapis.com/auth/userinfo.email",
-                "https://www.googleapis.com/auth/userinfo.profile",
-            },
-            Endpoint: google.Endpoint,
-        }
-        log.Println("✅ Google OAuth configured successfully")
-    } else {
-        log.Println("⚠️  Google OAuth not configured - set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET")
-    }
+func InitGoogleOAuth(cfg interface{}) {
+	type googleConfig interface {
+		GetGoogleClientID() string
+		GetGoogleClientSecret() string
+		GetGoogleRedirectURL() string
+	}
+
+	// Direct init from env (used by handler)
+	clientID := getEnvOrFallback("GOOGLE_CLIENT_ID", "")
+	clientSecret := getEnvOrFallback("GOOGLE_CLIENT_SECRET", "")
+
+	if clientID != "" && clientSecret != "" {
+		redirectURL := getEnvOrFallback("GOOGLE_REDIRECT_URL", "https://coded-backend.onrender.com/api/google/callback")
+
+		googleOAuthConfig = &oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes: []string{
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			},
+			Endpoint: google.Endpoint,
+		}
+		slog.Info("Google OAuth configured successfully")
+	} else {
+		slog.Warn("Google OAuth not configured")
+	}
 }
 
-// Google user info structure
+func getEnvOrFallback(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 type GoogleUserInfo struct {
-    ID            string `json:"id"`
-    Email         string `json:"email"`
-    VerifiedEmail bool   `json:"verified_email"`
-    Name          string `json:"name"`
-    GivenName     string `json:"given_name"`
-    FamilyName    string `json:"family_name"`
-    Picture       string `json:"picture"`
-    Locale        string `json:"locale"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
+	Locale        string `json:"locale"`
 }
 
-// Google Auth Request
 type GoogleAuthRequest struct {
-    Credential string `json:"credential" binding:"required"`
+	Credential string `json:"credential" binding:"required"`
 }
 
-// Generate username from email
 func generateUsernameFromEmail(email string) string {
-    // Take the part before @ and clean it up
-    for i := 0; i < len(email); i++ {
-        if email[i] == '@' {
-            username := email[:i]
-            // Remove any dots and make lowercase
-            cleanUsername := ""
-            for _, ch := range username {
-                if ch != '.' {
-                    cleanUsername += string(ch)
-                }
-            }
-            return cleanUsername + "_" + primitive.NewObjectID().Hex()[:4]
-        }
-    }
-    return "user_" + primitive.NewObjectID().Hex()[:8]
+	for i := 0; i < len(email); i++ {
+		if email[i] == '@' {
+			username := email[:i]
+			clean := strings.Builder{}
+			for _, ch := range username {
+				if ch != '.' {
+					clean.WriteRune(ch)
+				}
+			}
+			return clean.String() + "_" + primitive.NewObjectID().Hex()[:4]
+		}
+	}
+	return "user_" + primitive.NewObjectID().Hex()[:8]
 }
 
-// Handle Google OAuth callback (for traditional OAuth flow)
-func GoogleOAuthCallback(c *gin.Context) {
-    fmt.Printf("[%s] 🔐 GET /api/google/callback received\n", time.Now().Format("15:04:05"))
-    
-    code := c.Query("code")
-    if code == "" {
-        log.Printf("❌ Authorization code missing")
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Authorization code missing"})
-        return
-    }
+func (h *Handler) GoogleOAuthCallback(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Authorization code missing"})
+		return
+	}
 
-    if googleOAuthConfig == nil {
-        log.Printf("❌ Google OAuth not configured")
-        c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Google OAuth not configured"})
-        return
-    }
+	if googleOAuthConfig == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Google OAuth not configured"})
+		return
+	}
 
-    ctx := context.Background()
-    token, err := googleOAuthConfig.Exchange(ctx, code)
-    if err != nil {
-        log.Printf("❌ Google OAuth token exchange failed: %v", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to exchange authorization code"})
-        return
-    }
+	ctx := c.Request.Context()
+	token, err := googleOAuthConfig.Exchange(ctx, code)
+	if err != nil {
+		slog.Error("Google OAuth token exchange failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to exchange authorization code"})
+		return
+	}
 
-    // Get user info from Google
-    client := googleOAuthConfig.Client(ctx, token)
-    resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
-    if err != nil {
-        log.Printf("❌ Failed to get user info from Google: %v", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user information"})
-        return
-    }
-    defer resp.Body.Close()
+	client := googleOAuthConfig.Client(ctx, token)
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user information"})
+		return
+	}
+	defer resp.Body.Close()
 
-    data, err := io.ReadAll(resp.Body)
-    if err != nil {
-        log.Printf("❌ Failed to read Google user info: %v", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read user information"})
-        return
-    }
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read user information"})
+		return
+	}
 
-    var googleUser GoogleUserInfo
-    if err := json.Unmarshal(data, &googleUser); err != nil {
-        log.Printf("❌ Failed to parse Google user info: %v", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse user information"})
-        return
-    }
+	var googleUser GoogleUserInfo
+	if err := json.Unmarshal(data, &googleUser); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse user information"})
+		return
+	}
 
-    log.Printf("✅ Google user info retrieved: %s (%s)", googleUser.Email, googleUser.Name)
-    handleGoogleUser(c, googleUser, token)
+	h.handleGoogleUser(c, googleUser, token)
 }
 
-// Handle Google Sign-In with Credential (Google Identity Services)
-func GoogleAuthWithCredential(c *gin.Context) {
-    fmt.Printf("[%s] 🔐 POST /api/google-auth received\n", time.Now().Format("15:04:05"))
-    
-    var req GoogleAuthRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        log.Printf("❌ Invalid Google auth request: %v", err)
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-        return
-    }
+var (
+	googleKeyCache     *googleKeySet
+	googleKeyCacheTime time.Time
+)
 
-    // Verify the Google credential (in production, you should verify the JWT)
-    // For now, we'll parse the JWT to get user info
-    token, _, err := new(jwt.Parser).ParseUnverified(req.Credential, jwt.MapClaims{})
-    if err != nil {
-        log.Printf("❌ Failed to parse Google credential: %v", err)
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Google credential"})
-        return
-    }
-
-    claims, ok := token.Claims.(jwt.MapClaims)
-    if !ok {
-        log.Printf("❌ Invalid Google credential claims")
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Google credential"})
-        return
-    }
-
-    // Extract user info from claims
-    googleUser := GoogleUserInfo{
-        ID:      getStringClaim(claims, "sub"),
-        Email:   getStringClaim(claims, "email"),
-        Name:    getStringClaim(claims, "name"),
-        Picture: getStringClaim(claims, "picture"),
-    }
-
-    if googleUser.Email == "" {
-        log.Printf("❌ Google credential missing email")
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Email not provided by Google"})
-        return
-    }
-
-    log.Printf("✅ Google credential parsed: %s (%s)", googleUser.Email, googleUser.Name)
-    handleGoogleUser(c, googleUser, nil)
+type googleKeySet struct {
+	Keys []googleKey `json:"keys"`
 }
 
-// Helper function to get string claim from JWT
+type googleKey struct {
+	Kid string `json:"kid"`
+	Kty string `json:"kty"`
+	Alg string `json:"alg"`
+	Use string `json:"use"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
+func fetchGoogleKeys() (*googleKeySet, error) {
+	if googleKeyCache != nil && time.Since(googleKeyCacheTime) < time.Hour {
+		return googleKeyCache, nil
+	}
+
+	resp, err := http.Get("https://www.googleapis.com/oauth2/v3/certs")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch Google keys: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Google keys endpoint returned status %d", resp.StatusCode)
+	}
+
+	var keySet googleKeySet
+	if err := json.NewDecoder(resp.Body).Decode(&keySet); err != nil {
+		return nil, fmt.Errorf("failed to decode Google keys: %w", err)
+	}
+
+	googleKeyCache = &keySet
+	googleKeyCacheTime = time.Now()
+	return &keySet, nil
+}
+
+func (h *Handler) GoogleAuthWithCredential(c *gin.Context) {
+	var req GoogleAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	clientID := h.Cfg.GoogleClientID
+
+	token, err := jwt.Parse(req.Credential, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		keySet, err := fetchGoogleKeys()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch Google signing keys: %w", err)
+		}
+
+		kid, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, fmt.Errorf("missing kid header in token")
+		}
+
+		for _, key := range keySet.Keys {
+			if key.Kid == kid {
+				return parseRSAPublicKey(key.N, key.E)
+			}
+		}
+
+		return nil, fmt.Errorf("no matching key found for kid: %s", kid)
+	},
+		jwt.WithIssuer("https://accounts.google.com"),
+		jwt.WithIssuer("accounts.google.com"),
+		jwt.WithAudience(clientID),
+		jwt.WithExpirationRequired(),
+	)
+
+	if err != nil {
+		slog.Error("Google credential verification failed", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired Google credential"})
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Google credential"})
+		return
+	}
+
+	googleUser := GoogleUserInfo{
+		ID:      getStringClaim(claims, "sub"),
+		Email:   getStringClaim(claims, "email"),
+		Name:    getStringClaim(claims, "name"),
+		Picture: getStringClaim(claims, "picture"),
+	}
+
+	if googleUser.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email not provided by Google"})
+		return
+	}
+
+	h.handleGoogleUser(c, googleUser, nil)
+}
+
 func getStringClaim(claims jwt.MapClaims, key string) string {
-    if val, ok := claims[key]; ok {
-        if str, ok := val.(string); ok {
-            return str
-        }
-    }
-    return ""
+	if val, ok := claims[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
 }
 
-// Handle Google user authentication/registration
-func handleGoogleUser(c *gin.Context, googleUser GoogleUserInfo, token *oauth2.Token) {
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
+func (h *Handler) handleGoogleUser(c *gin.Context, googleUser GoogleUserInfo, token *oauth2.Token) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
 
-    usersColl := database.Client.Database("coded").Collection("users")
+	user, err := h.Repos.Users.FindByEmail(ctx, googleUser.Email)
 
-    // Check if user already exists
-    var user models.User
-    err := usersColl.FindOne(ctx, bson.M{"email": googleUser.Email}).Decode(&user)
+	isNewUser := false
+	if err == mongo.ErrNoDocuments {
+		newUser := createUserFromGoogle(googleUser)
+		if err := h.Repos.Users.Create(ctx, &newUser); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user account"})
+			return
+		}
+		user = &newUser
+		isNewUser = true
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	} else {
+		updateData := bson.M{
+			"$set": bson.M{
+				"lastSeen":     time.Now().Unix(),
+				"authProvider": "google",
+			},
+		}
 
-    if err == mongo.ErrNoDocuments {
-        // New user - create account
-        log.Printf("📝 Creating new user from Google: %s", googleUser.Email)
-        user = createUserFromGoogle(googleUser)
-        
-        // Insert new user
-        _, err = usersColl.InsertOne(ctx, user)
-        if err != nil {
-            log.Printf("❌ Failed to insert Google user: %v", err)
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user account"})
-            return
-        }
+		if user.GoogleID == nil && googleUser.ID != "" {
+			updateData["$set"].(bson.M)["googleId"] = googleUser.ID
+		}
 
-        log.Printf("✅ New Google user created: %s (ID: %s)", googleUser.Email, user.ID.Hex())
+		if (user.Avatar == "" || user.Avatar == fallbackAvatar) && googleUser.Picture != "" {
+			updateData["$set"].(bson.M)["avatar"] = googleUser.Picture
+			user.Avatar = googleUser.Picture
+		}
 
-    } else if err != nil {
-        // Database error
-        log.Printf("❌ Database error checking Google user: %v", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-        return
-    } else {
-        // Existing user - update last seen and possibly profile picture
-        log.Printf("📝 Existing Google user logging in: %s", googleUser.Email)
-        
-        // Update last seen time
-        updateData := bson.M{
-            "$set": bson.M{
-                "lastSeen": time.Now().Unix(),
-                "authProvider": "google",
-            },
-        }
-        
-        // Add GoogleID if not set
-        if user.GoogleID == nil && googleUser.ID != "" {
-            updateData["$set"].(bson.M)["googleId"] = googleUser.ID
-        }
-        
-        // Update avatar if it's the default and Google has a better one
-        if (user.Avatar == "" || user.Avatar == fallbackAvatar) && googleUser.Picture != "" {
-            updateData["$set"].(bson.M)["avatar"] = googleUser.Picture
-            user.Avatar = googleUser.Picture
-        }
-        
-        _, err = usersColl.UpdateOne(ctx, bson.M{"_id": user.ID}, updateData)
-        if err != nil {
-            log.Printf("⚠️ Failed to update user last seen: %v", err)
-        }
-    }
+		h.Repos.Users.Update(ctx, user.ID, updateData)
+	}
 
-    // Generate JWT token for the user
-    expirationTime := time.Now().Add(24 * time.Hour)
-    claims := &middleware.Claims{
-        UserID: user.ID.Hex(),
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(expirationTime),
-            IssuedAt:  jwt.NewNumericDate(time.Now()),
-        },
-    }
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &middleware.Claims{
+		UserID: user.ID.Hex(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
 
-    jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    jwtSecret := os.Getenv("JWT_SECRET")
-    if jwtSecret == "" {
-        jwtSecret = "your-secret-key-change-this-in-production"
-    }
-    
-    tokenString, err := jwtToken.SignedString([]byte(jwtSecret))
-    if err != nil {
-        log.Printf("❌ Failed to generate JWT token: %v", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate authentication token"})
-        return
-    }
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := jwtToken.SignedString([]byte(h.Cfg.JWTSecret))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate authentication token"})
+		return
+	}
 
-    // Check if user has completed onboarding
-    hasCompletedOnboarding := user.Name != "" && user.Name != user.Username && user.Gender != "" && len(user.InterestedIn) > 0
+	hasCompletedOnboarding := user.Name != "" && user.Name != user.Username && user.Gender != "" && len(user.InterestedIn) > 0
 
-    log.Printf("✅ Google authentication successful for: %s", googleUser.Email)
-
-    // Return response
-    c.JSON(http.StatusOK, gin.H{
-        "token":                 tokenString,
-        "userId":                user.ID.Hex(),
-        "email":                 user.Email,
-        "username":              user.Username,
-        "avatar":                user.Avatar,
-        "name":                  user.Name,
-        "isNewUser":             err == mongo.ErrNoDocuments,
-        "hasCompletedOnboarding": hasCompletedOnboarding,
-        "message":               "Authentication successful",
-        "expires":               expirationTime.Unix(),
-    })
+	c.JSON(http.StatusOK, gin.H{
+		"token":                 tokenString,
+		"userId":                user.ID.Hex(),
+		"username":              user.Username,
+		"avatar":                user.Avatar,
+		"name":                  user.Name,
+		"isNewUser":             isNewUser,
+		"hasCompletedOnboarding": hasCompletedOnboarding,
+		"message":               "Authentication successful",
+		"expires":               expirationTime.Unix(),
+	})
 }
 
-// Create user from Google info
+func parseRSAPublicKey(nStr, eStr string) (*rsa.PublicKey, error) {
+	nBytes, err := base64.RawURLEncoding.DecodeString(nStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode RSA modulus: %w", err)
+	}
+	eBytes, err := base64.RawURLEncoding.DecodeString(eStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode RSA exponent: %w", err)
+	}
+
+	n := new(big.Int).SetBytes(nBytes)
+	e := 0
+	for _, b := range eBytes {
+		e = e<<8 + int(b)
+	}
+
+	return &rsa.PublicKey{N: n, E: e}, nil
+}
+
 func createUserFromGoogle(googleUser GoogleUserInfo) models.User {
-    username := generateUsernameFromEmail(googleUser.Email)
-    
-    // Use Google picture if available, otherwise use default
-    avatar := googleUser.Picture
-    if avatar == "" {
-        avatar = fallbackAvatar
-    }
+	username := generateUsernameFromEmail(googleUser.Email)
 
-    // Generate name from Google info
-    name := googleUser.Name
-    if name == "" {
-        // Try to combine given and family name
-        if googleUser.GivenName != "" || googleUser.FamilyName != "" {
-            name = googleUser.GivenName + " " + googleUser.FamilyName
-        } else {
-            name = username
-        }
-    }
+	avatar := googleUser.Picture
+	if avatar == "" {
+		avatar = fallbackAvatar
+	}
 
-    return models.User{
-        ID:            primitive.NewObjectID(),
-        Email:         googleUser.Email,
-        PasswordHash:  nil, // Google users don't have password
-        AuthProvider:  "google",
-        GoogleID:      &googleUser.ID,
-        CreatedAt:     time.Now().Unix(),
-        LastSeen:      time.Now().Unix(),
-        Username:      username,
-        Name:          name,
-        Avatar:        avatar,
-        Bio:           "",
-        Gender:        "",
-        InterestedIn:  []string{},
-        Photos:        []string{},
-        Status:        "offline",
-        BirthDate:     0,
-        ReferralCode:  "",
-        Latitude:      nil,
-        Longitude:     nil,
-    }
+	name := googleUser.Name
+	if name == "" {
+		if googleUser.GivenName != "" || googleUser.FamilyName != "" {
+			name = googleUser.GivenName + " " + googleUser.FamilyName
+		} else {
+			name = username
+		}
+	}
+
+	return models.User{
+		ID:            primitive.NewObjectID(),
+		Email:         googleUser.Email,
+		PasswordHash:  nil,
+		AuthProvider:  "google",
+		GoogleID:      &googleUser.ID,
+		CreatedAt:     time.Now().Unix(),
+		LastSeen:      time.Now().Unix(),
+		Username:      username,
+		Name:          name,
+		Avatar:        avatar,
+		Bio:           "",
+		Gender:        "",
+		InterestedIn:  []string{},
+		Photos:        []string{},
+		Status:        "offline",
+		BirthDate:     0,
+		ReferralCode:  "",
+		Latitude:      nil,
+		Longitude:     nil,
+	}
 }
 
-// Get Google OAuth URL (for traditional OAuth flow)
-func GetGoogleAuthURL(c *gin.Context) {
-    if googleOAuthConfig == nil {
-        c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Google OAuth not configured"})
-        return
-    }
+func (h *Handler) GetGoogleAuthURL(c *gin.Context) {
+	if googleOAuthConfig == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Google OAuth not configured"})
+		return
+	}
 
-    // Generate state token for security
-    state := primitive.NewObjectID().Hex()
-    
-    url := googleOAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
-    c.JSON(http.StatusOK, gin.H{"url": url})
+	state := primitive.NewObjectID().Hex()
+	url := googleOAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	c.JSON(http.StatusOK, gin.H{"url": url})
 }

@@ -1,29 +1,51 @@
 services:
   - type: web
-    name: coded-backend
-    env: go
-    buildCommand: cd backend && go build -o coded-backend
-    startCommand: cd backend && ./coded-backend
+    name: zukaping
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    healthCheckPolicy:
+      responseTimeout: 10
+      failureThreshold: 3
+      recoveryThreshold: 3
     envVars:
       - key: PORT
-        value: 10000
+        value: 8080
       - key: GIN_MODE
         value: release
+      - key: WEB_DIR
+        value: /app/web
       - key: JWT_SECRET
         sync: false
       - key: MONGODB_URI
         sync: false
+      - key: ALLOWED_ORIGINS
+        value: *
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
+      - key: CLOUDINARY_URL
         sync: false
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE
         sync: false

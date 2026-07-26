@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -20,9 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String _errorMessage = '';
   bool _isButtonEnabled = false;
-  
-  final String _baseUrl = ApiService.baseUrl.replaceAll('/api', '');
-  
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: '12239007321-kcvn3r3asgef4ic341tnvbn2bpt8i9qg.apps.googleusercontent.com',
   );
@@ -74,9 +70,10 @@ class _LoginScreenState extends State<LoginScreen> {
             throw Exception(result['message'] ?? 'Authentication failed');
           }
           
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('token', result['token']);
-          await prefs.setString('userId', result['userId']);
+          await authService.saveAuth(
+            result['token'],
+            result['userId'],
+          );
           
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -120,46 +117,34 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _emailController.text.trim(),
-          'password': _passwordController.text,
-        }),
+      final result = await ApiService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', data['token']);
-        await prefs.setString('userId', data['userId']);
-        
-        if (widget.inviteCode != null && widget.inviteCode!.isNotEmpty) {
-          try {
-            await ApiService.joinGroupByInviteCode(widget.inviteCode!);
-          } catch (e) {
-            print('⚠️ Auto-joining group on login failed: $e');
-          }
-        }
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login successful!')),
-          );
-          Navigator.pushReplacementNamed(context, '/feed');
-        }
-      } else {
-        String errorMsg = 'Invalid email or password';
-        try {
-          final errorData = jsonDecode(response.body);
-          errorMsg = errorData['error'] ?? errorData['message'] ?? errorMsg;
-        } catch (e) {
-          errorMsg = 'Invalid email or password';
-        }
+      if (result['error'] == true) {
         setState(() {
-          _errorMessage = errorMsg;
+          _errorMessage = result['message'] ?? 'Invalid email or password';
         });
+        return;
+      }
+
+      await authService.saveAuth(
+        result['token'],
+        result['userId'],
+      );
+
+      if (widget.inviteCode != null && widget.inviteCode!.isNotEmpty) {
+        try {
+          await ApiService.joinGroupByInviteCode(widget.inviteCode!);
+        } catch (_) {}
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login successful!')),
+        );
+        Navigator.pushReplacementNamed(context, '/feed');
       }
     } catch (e) {
       setState(() {

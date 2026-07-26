@@ -13,13 +13,21 @@ import 'screens/favorites_screen.dart';
 import 'screens/nearby_screen.dart';
 import 'screens/view_profile_screen.dart';
 import 'screens/group_join_screen.dart';
-// import 'screens/settings_screen.dart'; // Remove if you don't have this yet
 
+import 'services/auth_service.dart';
+import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'widgets/network_wrapper.dart';
 
+late final AuthService authService;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  authService = AuthService();
+  await authService.init();
+  ApiService.init(authService);
+
   await NotificationService.initialize();
   runApp(const Lemon16App());
 }

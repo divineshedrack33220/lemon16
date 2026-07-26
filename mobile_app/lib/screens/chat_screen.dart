@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io' as io;
@@ -11,6 +10,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:shimmer/shimmer.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 import '../services/sound_service.dart';
@@ -43,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   bool _isTyping = false;
   bool _showEmojiPicker = false;
   bool _isIcebreakerVisible = true;
+  String? _error;
   bool? _isUploading;
   int? _uploadingCount;
   int? _uploadedCount;
@@ -118,16 +119,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   Future<void> _initializeChat() async {
-    final token = await ApiService.getToken();
-    if (token == null) return;
-
-    try {
-      final parts = token.split('.');
-      if (parts.length == 3) {
-        final payload = json.decode(utf8.decode(base64.decode(base64.normalize(parts[1]))));
-        _currentUserId = payload['userId'] ?? payload['sub'] ?? payload['id'];
-      }
-    } catch (e) {}
+    _currentUserId = authService.userId ?? authService.decodeUserIdFromToken();
 
     await _loadChatHeader();
     await _loadMessages();
@@ -139,67 +131,51 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       final userId = widget.userId;
 
       if (chatId != null) {
-        final response = await http.get(
-          Uri.parse('${ApiService.baseUrl}/chats/$chatId'),
-          headers: await ApiService.getHeaders(),
-        );
-
-        if (response.statusCode == 200) {
-          final chat = json.decode(response.body);
-          final isGroup = chat['isGroup'] == true;
-          final partner = chat['partner'] ?? chat['participants']?.firstWhere((p) => p['_id'] != _currentUserId, orElse: () => null);
-          
-          setState(() {
-            _actualChatId = chat['id'] ?? chat['_id'] ?? chatId;
-            if (isGroup) {
-              _partnerName = chat['groupName'] ?? 'Group Chat';
-              _partnerAvatar = chat['groupAvatar'];
-              _partnerStatus = 'group';
-              _isPartnerOnline = false;
-              _groupDescription = chat['groupDescription'];
-              _groupAdminIds = (chat['adminIds'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-              _groupParticipants = chat['participantsProfiles'] as List<dynamic>? ?? [];
-            } else if (partner != null) {
-              _partnerId = partner['id'] ?? partner['_id'];
-              _partnerName = partner['name'];
-              _partnerAvatar = partner['avatar'];
-              _partnerStatus = partner['status'] ?? 'offline';
-              _isPartnerOnline = partner['isOnline'] == true;
-              _partnerPhotos = (partner['photos'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-            }
-          });
-        }
-      } else if (userId != null) {
-        final response = await http.get(
-          Uri.parse('${ApiService.baseUrl}/user/$userId'),
-          headers: await ApiService.getHeaders(),
-        );
-
-        if (response.statusCode == 200) {
-          final user = json.decode(response.body);
-          setState(() {
-            _partnerId = user['_id'] ?? userId;
-            _partnerName = user['name'];
-            _partnerAvatar = user['avatar'];
-            _partnerStatus = user['status'] ?? 'offline';
-            _isPartnerOnline = user['isOnline'] == true;
-            _partnerPhotos = (user['photos'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-          });
-
-          final createRes = await http.post(
-            Uri.parse('${ApiService.baseUrl}/chats'),
-            headers: await ApiService.getHeaders(),
-            body: json.encode({'participants': [userId]}),
-          );
-
-          if (createRes.statusCode == 200 || createRes.statusCode == 201) {
-            final chat = json.decode(createRes.body);
-            _actualChatId = chat['_id'];
+        final chat = await ApiService.getChat(chatId);
+        
+        final isGroup = chat['isGroup'] == true;
+        final partner = chat['partner'] ?? chat['participants']?.firstWhere((p) => p['_id'] != _currentUserId, orElse: () => null);
+        
+        setState(() {
+          _actualChatId = chat['id'] ?? chat['_id'] ?? chatId;
+          if (isGroup) {
+            _partnerName = chat['groupName'] ?? 'Group Chat';
+            _partnerAvatar = chat['groupAvatar'];
+            _partnerStatus = 'group';
+            _isPartnerOnline = false;
+            _groupDescription = chat['groupDescription'];
+            _groupAdminIds = (chat['adminIds'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            _groupParticipants = chat['participantsProfiles'] as List<dynamic>? ?? [];
+          } else if (partner != null) {
+            _partnerId = partner['id'] ?? partner['_id'];
+            _partnerName = partner['name'];
+            _partnerAvatar = partner['avatar'];
+            _partnerStatus = partner['status'] ?? 'offline';
+            _isPartnerOnline = partner['isOnline'] == true;
+            _partnerPhotos = (partner['photos'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
           }
-        }
+        });
+      } else if (userId != null) {
+        final user = await ApiService.getUserById(userId);
+        
+        setState(() {
+          _partnerId = user['_id'] ?? userId;
+          _partnerName = user['name'];
+          _partnerAvatar = user['avatar'];
+          _partnerStatus = user['status'] ?? 'offline';
+          _isPartnerOnline = user['isOnline'] == true;
+          _partnerPhotos = (user['photos'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+        });
+
+        final chatResult = await ApiService.createChat(userId);
+        _actualChatId = chatResult['_id'];
       }
     } catch (e) {
-      print('Header error: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load chat. Please try again.';
+        });
+      }
     }
   }
 
@@ -218,7 +194,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         _scrollToBottom();
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'Failed to load messages.';
+        });
+      }
     }
   }
 
@@ -1223,9 +1204,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               _buildAppBar(),
               Expanded(
                 child: _isLoading 
-                    ? _buildShimmerLoading() 
-                    : _messages.isEmpty 
-                        ? _buildEmptyState()
+                    ? _buildShimmerLoading()
+                    : _error != null
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                                  const SizedBox(height: 16),
+                                  Text(_error!, style: const TextStyle(fontSize: 16, color: Colors.grey), textAlign: TextAlign.center),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: () { setState(() { _isLoading = true; _error = null; }); _initializeChat(); },
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : _messages.isEmpty 
+                            ? _buildEmptyState()
                         : ListView.builder(
                             controller: _scrollController,
                             reverse: true, // Standard for chat apps

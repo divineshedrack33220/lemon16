@@ -31,4 +31,7 @@ type User struct {
 
 	// Privacy
 	BlockedUsers []primitive.ObjectID `bson:"blockedUsers,omitempty" json:"blockedUsers,omitempty"`
+
+	// Notifications
+	Phone      string `bson:"phone,omitempty" json:"-"`
 }

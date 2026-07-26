@@ -5,21 +5,20 @@ import (
 	"net/http"
 	"time"
 
-	"coded/database"
+	"coded/notify"
 	"coded/models"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func AddFavorite(c *gin.Context) {
+func (h *Handler) AddFavorite(c *gin.Context) {
 	var req struct {
 		TargetUserID string `json:"targetUserId" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 		return
 	}
 
@@ -41,21 +40,15 @@ func AddFavorite(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	favColl := database.Client.Database("coded").Collection("favorites")
-
-	// Check if already favorited
-	count, err := favColl.CountDocuments(ctx, bson.M{
-		"userId":       userID,
-		"targetUserId": targetID,
-	})
+	exists, err := h.Repos.Favorites.Exists(ctx, userID, targetID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
-	if count > 0 {
+	if exists {
 		c.JSON(http.StatusConflict, gin.H{"error": "Already favorited"})
 		return
 	}
@@ -67,24 +60,33 @@ func AddFavorite(c *gin.Context) {
 		CreatedAt:    time.Now().Unix(),
 	}
 
-	_, err = favColl.InsertOne(ctx, fav)
-	if err != nil {
+	if err := h.Repos.Favorites.Create(ctx, &fav); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add favorite"})
 		return
+	}
+
+	target, _ := h.Repos.Users.FindByID(ctx, targetID)
+
+	if target != nil {
+		h.Notifier.OnFavorite(c.Request.Context(), notify.FavoriteNotification{
+			FavoriterID:   userID.Hex(),
+			FavoriterName: getUserDisplayName(h, ctx, userID),
+			TargetID:      targetID.Hex(),
+			TargetEmail:   target.Email,
+			TargetPhone:   target.Phone,
+		})
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Favorite added"})
 }
 
-func RemoveFavorite(c *gin.Context) {
+func (h *Handler) RemoveFavorite(c *gin.Context) {
 	var req struct {
 		TargetUserID string `json:"targetUserId" binding:"required"`
 	}
-	
-	// Try to parse from query parameter first (for backward compatibility)
+
 	targetUserId := c.Query("targetUserId")
 	if targetUserId == "" {
-		// If not in query, try to parse from JSON body
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "targetUserId is required"})
 			return
@@ -105,15 +107,10 @@ func RemoveFavorite(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	favColl := database.Client.Database("coded").Collection("favorites")
-
-	result, err := favColl.DeleteOne(ctx, bson.M{
-		"userId":       userID,
-		"targetUserId": targetID,
-	})
+	result, err := h.Repos.Favorites.Delete(ctx, userID, targetID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove favorite"})
 		return
@@ -127,7 +124,7 @@ func RemoveFavorite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Favorite removed"})
 }
 
-func GetFavorites(c *gin.Context) {
+func (h *Handler) GetFavorites(c *gin.Context) {
 	userIDStr := c.GetString("userId")
 	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
@@ -135,24 +132,12 @@ func GetFavorites(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	favColl := database.Client.Database("coded").Collection("favorites")
-	usersColl := database.Client.Database("coded").Collection("users")
-
-	// Fetch favorites - FIXED: Use keyed fields in bson.D
-	findOptions := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-	cursor, err := favColl.Find(ctx, bson.M{"userId": userID}, findOptions)
+	favorites, err := h.Repos.Favorites.FindByUser(ctx, userID, 100)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch favorites"})
-		return
-	}
-	defer cursor.Close(ctx)
-
-	var favorites []models.Favorite
-	if err := cursor.All(ctx, &favorites); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode favorites"})
 		return
 	}
 
@@ -161,36 +146,27 @@ func GetFavorites(c *gin.Context) {
 		return
 	}
 
-	// Collect target user IDs
 	var targetIDs []primitive.ObjectID
 	for _, f := range favorites {
 		targetIDs = append(targetIDs, f.TargetUserID)
 	}
 
-	// Fetch user documents
-	userCursor, err := usersColl.Find(ctx, bson.M{"_id": bson.M{"$in": targetIDs}})
+	users, err := h.Repos.Users.FindMany(ctx, bson.M{"_id": bson.M{"$in": targetIDs}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
-	defer userCursor.Close(ctx)
 
-	var users []models.User
-	if err := userCursor.All(ctx, &users); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode users"})
-		return
+	currentUser, _ := h.Repos.Users.FindByID(ctx, userID)
+	if currentUser == nil {
+		currentUser = &models.User{}
 	}
-
-	// Fetch current user for blocked list
-	var currentUser models.User
-	usersColl.FindOne(ctx, bson.M{"_id": userID}).Decode(&currentUser)
 	if currentUser.BlockedUsers == nil {
 		currentUser.BlockedUsers = []primitive.ObjectID{}
 	}
 
 	userMap := make(map[primitive.ObjectID]map[string]interface{})
 	for _, u := range users {
-		// Filter out blocked users
 		isBlocked := false
 		for _, bID := range currentUser.BlockedUsers {
 			if bID == u.ID {
@@ -202,7 +178,6 @@ func GetFavorites(c *gin.Context) {
 			continue
 		}
 
-		// Calculate live online status (active in last 5 mins)
 		isOnline := u.Status == "available" || (u.LastSeen > time.Now().Unix()-300)
 
 		userMap[u.ID] = map[string]interface{}{
@@ -215,7 +190,6 @@ func GetFavorites(c *gin.Context) {
 		}
 	}
 
-	// Use the global fallbackAvatar from common.go
 	var response []map[string]interface{}
 	for _, f := range favorites {
 		if storedUser, exists := userMap[f.TargetUserID]; exists {
@@ -229,4 +203,18 @@ func GetFavorites(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func getUserDisplayName(h *Handler, ctx context.Context, id primitive.ObjectID) string {
+	user, err := h.Repos.Users.FindByID(ctx, id)
+	if err != nil || user == nil {
+		return "Someone"
+	}
+	if user.Name != "" {
+		return user.Name
+	}
+	if user.Username != "" {
+		return user.Username
+	}
+	return "Someone"
 }
