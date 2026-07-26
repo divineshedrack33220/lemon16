@@ -197,15 +197,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Blue circle background
-          Container(
-            width: 120,
-            height: 120,
-            decoration: const BoxDecoration(
-              color: Color(0xFF00AEEF),
-              shape: BoxShape.circle,
-            ),
-          ),
           // Logo image
           Image.asset(
             'assets/logo.png',

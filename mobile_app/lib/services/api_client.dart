@@ -23,7 +23,7 @@ class ApiClient {
     if (kIsWeb) {
       final host = Uri.base.host;
       if (host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0') {
-        return 'http://localhost:10000/api';
+        return 'http://localhost:8080/api';
       }
       return '${Uri.base.scheme}://${Uri.base.host}${Uri.base.port != 0 && Uri.base.port != 80 && Uri.base.port != 443 ? ":${Uri.base.port}" : ""}/api';
     }
@@ -32,7 +32,7 @@ class ApiClient {
       return 'https://zukaping.onrender.com/api';
     }
 
-    return 'http://10.0.2.2:10000/api';
+    return 'http://10.0.2.2:8080/api';
   }
 
   Future<Map<String, String>> _headers() async => _auth.authHeaders;
