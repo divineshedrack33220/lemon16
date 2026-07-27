@@ -120,7 +120,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
                               leading: CircleAvatar(
                                 radius: 28,
                                 backgroundImage: avatar != null && avatar.isNotEmpty ? CachedNetworkImageProvider(avatar) : null,
-                                backgroundColor: const Color(0xFF00AEEF).withValues(alpha: 0.15),
+                                backgroundColor: const Color(0xFF0169FE).withValues(alpha: 0.15),
                                 child: avatar == null || avatar.isEmpty
                                     ? Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: kBrandColor))
                                     : null,

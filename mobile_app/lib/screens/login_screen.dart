@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../widgets/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? inviteCode;
@@ -177,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Logo
-                        Image.asset('assets/logo.png', width: 80, height: 80),
+                        const AppLogo(size: 80),
                         
                         const SizedBox(height: 80),
                         
@@ -221,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: (_isButtonEnabled && !_isLoading) ? _login : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00AEEF),
+                              backgroundColor: const Color(0xFF0169FE),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
                             ),
                             child: _isLoading
@@ -284,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const Text("Don't have an account? "),
                             GestureDetector(
                               onTap: () => Navigator.pushNamed(context, '/signup'),
-                              child: const Text('Sign up', style: TextStyle(color: Color(0xFF00AEEF), fontWeight: FontWeight.w600)),
+                              child: const Text('Sign up', style: TextStyle(color: Color(0xFF0169FE), fontWeight: FontWeight.w600)),
                             ),
                           ],
                         ),

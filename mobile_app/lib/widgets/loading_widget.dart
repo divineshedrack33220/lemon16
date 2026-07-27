@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-const Color kBrandColor = Color(0xFF00AEEF);
+const Color kBrandColor = Color(0xFF0169FE);
 
 class AppEmptyState extends StatelessWidget {
   final IconData icon;

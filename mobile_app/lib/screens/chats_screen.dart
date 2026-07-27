@@ -217,7 +217,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
         content: Text(message),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.fixed,
-        backgroundColor: const Color(0xFF00AEEF),
+        backgroundColor: const Color(0xFF0169FE),
       ),
     );
   }
@@ -343,7 +343,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'available':
-      case 'online': return const Color(0xFF00AEEF);
+      case 'online': return const Color(0xFF0169FE);
       case 'busy': return const Color(0xFFFFFF00);
       case 'super': return Colors.deepPurpleAccent;
       case 'ghost': return Colors.grey.withOpacity(0.5);
@@ -389,7 +389,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
             heroTag: 'createGroup',
             onPressed: _showCreateGroupModal,
             backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF00AEEF),
+            foregroundColor: const Color(0xFF0169FE),
             elevation: 4,
             child: const Icon(Icons.group_add_rounded),
           ),
@@ -397,7 +397,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
           FloatingActionButton(
             heroTag: 'searchUsers',
             onPressed: _showGlobalSearchModal,
-            backgroundColor: const Color(0xFF00AEEF),
+            backgroundColor: const Color(0xFF0169FE),
             foregroundColor: Colors.white,
             elevation: 4,
             child: const Icon(Icons.person_add_alt_1_rounded),
@@ -429,7 +429,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
     final status = _statuses[_currentStatusIndex];
     Color dotColor;
     switch (status['class']) {
-      case 'available': dotColor = const Color(0xFF00AEEF); break;
+      case 'available': dotColor = const Color(0xFF0169FE); break;
       case 'busy': dotColor = const Color(0xFFFFFF00); break;
       case 'ghost': dotColor = Colors.grey.withOpacity(0.5); break;
       case 'super': dotColor = Colors.deepPurpleAccent; break;
@@ -549,7 +549,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
   Widget _buildChatList() {
     return RefreshIndicator(
       onRefresh: _loadChats,
-      color: const Color(0xFF00AEEF),
+      color: const Color(0xFF0169FE),
       child: ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: _filteredChats.length,
@@ -562,7 +562,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: chat.unreadCount > 0 ? const Color(0xFF00AEEF).withOpacity(0.05) : Colors.transparent,
+              color: chat.unreadCount > 0 ? const Color(0xFF0169FE).withOpacity(0.05) : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -635,7 +635,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
                       Container(
                         margin: const EdgeInsets.only(top: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(color: const Color(0xFF00AEEF), borderRadius: BorderRadius.circular(10)),
+                        decoration: BoxDecoration(color: const Color(0xFF0169FE), borderRadius: BorderRadius.circular(10)),
                         child: Text('${chat.unreadCount}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                   ],
@@ -652,7 +652,7 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
   Widget _buildTypingIndicator() {
     return Row(
       children: [
-        const Text('Typing', style: TextStyle(color: Color(0xFF00AEEF), fontWeight: FontWeight.bold)),
+        const Text('Typing', style: TextStyle(color: Color(0xFF0169FE), fontWeight: FontWeight.bold)),
         const SizedBox(width: 4),
         _TypingDots(),
       ],
@@ -661,9 +661,9 @@ class _ChatsScreenState extends State<ChatsScreen> with WidgetsBindingObserver {
 
   Widget _buildPlaceholderAvatar(String name) {
     return Container(
-      color: const Color(0xFF00AEEF).withOpacity(0.1),
+      color: const Color(0xFF0169FE).withOpacity(0.1),
       alignment: Alignment.center,
-      child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF00AEEF))),
+      child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0169FE))),
     );
   }
 }
@@ -689,7 +689,7 @@ class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderState
             double val = (_controller.value * 3 - index);
             if (val >= 0 && val <= 1) opacity = 0.3 + (0.7 * val);
             else if (val > 1 && val <= 2) opacity = 1.0 - (0.7 * (val - 1));
-            return Container(margin: const EdgeInsets.symmetric(horizontal: 1), width: 4, height: 4, decoration: BoxDecoration(color: const Color(0xFF00AEEF).withOpacity(opacity), shape: BoxShape.circle));
+            return Container(margin: const EdgeInsets.symmetric(horizontal: 1), width: 4, height: 4, decoration: BoxDecoration(color: const Color(0xFF0169FE).withOpacity(opacity), shape: BoxShape.circle));
           }),
         );
       },
@@ -721,26 +721,26 @@ class _PulseAvatarState extends State<_PulseAvatar> with SingleTickerProviderSta
       animation: _controller,
       builder: (context, child) {
         return Container(
-          decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF00AEEF).withOpacity(1.0 - _controller.value), blurRadius: _controller.value * 10, spreadRadius: _controller.value * 5)]),
+          decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF0169FE).withOpacity(1.0 - _controller.value), blurRadius: _controller.value * 10, spreadRadius: _controller.value * 5)]),
           child: effectiveImageUrl != null
               ? CachedNetworkImage(
                   imageUrl: effectiveImageUrl,
                   fit: BoxFit.cover,
                   errorWidget: (context, url, error) => Container(
-                    color: const Color(0xFF00AEEF).withOpacity(0.1),
+                    color: const Color(0xFF0169FE).withOpacity(0.1),
                     alignment: Alignment.center,
                     child: Text(
                       widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : '?',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF00AEEF)),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0169FE)),
                     ),
                   ),
                 )
               : Container(
-                  color: const Color(0xFF00AEEF).withOpacity(0.1),
+                  color: const Color(0xFF0169FE).withOpacity(0.1),
                   alignment: Alignment.center,
                   child: Text(
                     widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF00AEEF)),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0169FE)),
                   ),
                 ),
         );
@@ -894,7 +894,7 @@ class _GlobalUserSearchModalState extends State<_GlobalUserSearchModal> {
                                   ? Text(
                                       name.isNotEmpty ? name[0].toUpperCase() : '?',
                                       style: const TextStyle(
-                                        color: Color(0xFF00AEEF),
+                                        color: Color(0xFF0169FE),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     )
@@ -911,7 +911,7 @@ class _GlobalUserSearchModalState extends State<_GlobalUserSearchModal> {
                             trailing: ElevatedButton(
                               onPressed: () => _startChat(id),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00AEEF),
+                                backgroundColor: const Color(0xFF0169FE),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
@@ -1246,7 +1246,7 @@ class _CreateGroupModalState extends State<_CreateGroupModal> {
                                   ? Text(
                                       name.isNotEmpty ? name[0].toUpperCase() : '?',
                                       style: const TextStyle(
-                                        color: Color(0xFF00AEEF),
+                                        color: Color(0xFF0169FE),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     )
@@ -1255,7 +1255,7 @@ class _CreateGroupModalState extends State<_CreateGroupModal> {
                             title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
                             subtitle: Text('@${name.toLowerCase().replaceAll(' ', '')}', style: TextStyle(color: Colors.grey[600])),
                             trailing: isSelected
-                                ? const Icon(Icons.check_circle, color: Color(0xFF00AEEF))
+                                ? const Icon(Icons.check_circle, color: Color(0xFF0169FE))
                                 : const Icon(Icons.circle_outlined, color: Colors.grey),
                             onTap: () => _toggleUserSelection(user),
                           );
@@ -1272,7 +1272,7 @@ class _CreateGroupModalState extends State<_CreateGroupModal> {
               child: ElevatedButton(
                 onPressed: _isCreating ? null : _createGroup,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00AEEF),
+                  backgroundColor: const Color(0xFF0169FE),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                   elevation: 0,

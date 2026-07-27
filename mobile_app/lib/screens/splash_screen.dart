@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../main.dart';
 import '../services/api_service.dart';
+import '../widgets/app_logo.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -188,25 +189,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLogo() {
-    return Container(
-      width: 140,
-      height: 140,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Logo image
-          Image.asset(
-            'assets/logo.png',
-            width: 70,
-            height: 70,
-            fit: BoxFit.contain,
-          ),
-        ],
-      ),
-    );
+    return const AppLogo(size: 70);
   }
 
   Widget _buildTagline(String phrase) {
@@ -229,7 +212,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               text: '${words[index]} ',
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF00AEEF),
+                color: Color(0xFF0169FE),
               ),
             );
           } else {
@@ -260,7 +243,7 @@ class _LoaderPainter extends CustomPainter {
     
     // First ring
     final paint1 = Paint()
-      ..color = const Color(0xFF00AEEF)
+      ..color = const Color(0xFF0169FE)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     
@@ -268,7 +251,7 @@ class _LoaderPainter extends CustomPainter {
     
     // Second ring
     final paint2 = Paint()
-      ..color = const Color(0xFF00AEEF).withOpacity(0.5)
+      ..color = const Color(0xFF0169FE).withOpacity(0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     
@@ -316,7 +299,7 @@ class _SimpleLoaderState extends State<_SimpleLoader> with SingleTickerProviderS
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF00AEEF),
+                color: const Color(0xFF0169FE),
                 width: 2,
               ),
             ),

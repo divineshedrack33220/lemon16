@@ -573,7 +573,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     child: _partnerAvatar == null
                         ? Text(
                             _partnerName != null && _partnerName!.isNotEmpty ? _partnerName![0].toUpperCase() : 'G',
-                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF00AEEF)),
+                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF0169FE)),
                           )
                         : null,
                   ),
@@ -612,7 +612,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             icon: const Icon(Icons.edit, size: 14),
                             label: const Text('Edit Details', style: TextStyle(fontSize: 12)),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00AEEF),
+                              backgroundColor: const Color(0xFF0169FE),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -626,8 +626,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             label: const Text('Invite Link', style: TextStyle(fontSize: 12)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF00AEEF),
-                              side: const BorderSide(color: Color(0xFF00AEEF)),
+                              foregroundColor: const Color(0xFF0169FE),
+                              side: const BorderSide(color: Color(0xFF0169FE)),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             ),
@@ -640,8 +640,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             label: const Text('Add Member', style: TextStyle(fontSize: 12)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF00AEEF),
-                              side: const BorderSide(color: Color(0xFF00AEEF)),
+                              foregroundColor: const Color(0xFF0169FE),
+                              side: const BorderSide(color: Color(0xFF0169FE)),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             ),
@@ -705,7 +705,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 memberName,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: isSelf ? const Color(0xFF00AEEF) : Colors.black87,
+                                  color: isSelf ? const Color(0xFF0169FE) : Colors.black87,
                                 ),
                               ),
                               if (isSelf) ...[
@@ -717,7 +717,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                           subtitle: Text(
                             isMemberAdmin ? 'Admin' : 'Member',
                             style: TextStyle(
-                              color: isMemberAdmin ? const Color(0xFF00AEEF) : Colors.grey[500],
+                              color: isMemberAdmin ? const Color(0xFF0169FE) : Colors.grey[500],
                               fontSize: 12,
                             ),
                           ),
@@ -725,13 +725,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                               ? Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF00AEEF).withOpacity(0.1),
+                                    color: const Color(0xFF0169FE).withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: const Color(0xFF00AEEF).withOpacity(0.3)),
+                                    border: Border.all(color: const Color(0xFF0169FE).withOpacity(0.3)),
                                   ),
                                   child: const Text(
                                     'Admin',
-                                    style: TextStyle(color: Color(0xFF00AEEF), fontSize: 10, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: Color(0xFF0169FE), fontSize: 10, fontWeight: FontWeight.bold),
                                   ),
                                 )
                               : (isCurrentUserAdmin && !isSelf)
@@ -936,7 +936,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 }
                               },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00AEEF),
+                          backgroundColor: const Color(0xFF0169FE),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                           elevation: 0,
@@ -971,7 +971,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             title: Row(
               children: [
-                const Icon(Icons.link_rounded, color: Color(0xFF00AEEF), size: 28),
+                const Icon(Icons.link_rounded, color: Color(0xFF0169FE), size: 28),
                 const SizedBox(width: 8),
                 const Text('Group Invite Link', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ],
@@ -1013,7 +1013,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 icon: const Icon(Icons.copy_rounded, size: 16),
                 label: const Text('Copy Link'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00AEEF),
+                  backgroundColor: const Color(0xFF0169FE),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
@@ -1170,7 +1170,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                 }
                                               },
                                               style: ElevatedButton.styleFrom(
-                                                backgroundColor: const Color(0xFF00AEEF),
+                                                backgroundColor: const Color(0xFF0169FE),
                                                 foregroundColor: Colors.white,
                                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                                 elevation: 0,
@@ -1302,7 +1302,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           : (_isPartnerOnline ? 'online' : (_partnerStatus ?? 'offline'))),
                                   style: TextStyle(
                                     fontSize: 12, 
-                                    color: _isTyping ? const Color(0xFF00AEEF) : Colors.grey[600],
+                                    color: _isTyping ? const Color(0xFF0169FE) : Colors.grey[600],
                                     fontWeight: _isTyping ? FontWeight.bold : FontWeight.normal,
                                   ),
                                   maxLines: 1,
@@ -1316,7 +1316,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     ),
                   ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Color(0xFF00AEEF)),
+                icon: const Icon(Icons.more_vert, color: Color(0xFF0169FE)),
                 onSelected: (val) {
                   if (val == 'block') {
                     _handleBlockUser();
@@ -1396,7 +1396,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
               decoration: BoxDecoration(
                 gradient: isMe ? const LinearGradient(
-                  colors: [Color(0xFF00D2FF), Color(0xFF00AEEF)],
+                  colors: [Color(0xFF00D2FF), Color(0xFF0169FE)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ) : null,
@@ -1407,7 +1407,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: isMe ? const Color(0xFF00AEEF).withOpacity(0.2) : Colors.black.withOpacity(0.04),
+                    color: isMe ? const Color(0xFF0169FE).withOpacity(0.2) : Colors.black.withOpacity(0.04),
                     blurRadius: 12, offset: const Offset(0, 6),
                   ),
                   if (isMe) BoxShadow(
@@ -1679,10 +1679,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF00AEEF).withOpacity(0.08),
+              color: const Color(0xFF0169FE).withOpacity(0.08),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.forum_rounded, size: 48, color: Color(0xFF00AEEF)),
+            child: const Icon(Icons.forum_rounded, size: 48, color: Color(0xFF0169FE)),
           ),
           const SizedBox(height: 20),
           Text(
@@ -1828,7 +1828,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     child: LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.transparent,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00AEEF)),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0169FE)),
                     ),
                   ),
                 if (uploading)
@@ -1839,10 +1839,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       children: [
                         Text(
                           'Uploading $upDone of $upCount...',
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF00AEEF), fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF0169FE), fontWeight: FontWeight.bold),
                         ),
                         Text('${(progress * 100).toInt()}%',
-                            style: const TextStyle(fontSize: 10, color: Color(0xFF00AEEF), fontWeight: FontWeight.bold)),
+                            style: const TextStyle(fontSize: 10, color: Color(0xFF0169FE), fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -1858,7 +1858,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         Row(
                           children: [
                             Text('${stagedImgs.length} image${stagedImgs.length > 1 ? 's' : ''} selected',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF00AEEF))),
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0169FE))),
                             const Spacer(),
                             GestureDetector(
                               onTap: () {
@@ -1927,7 +1927,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                               maxLines: null,
                               onTap: () => setState(() => _showEmojiPicker = false),
                               textCapitalization: TextCapitalization.sentences,
-                              cursorColor: const Color(0xFF00AEEF),
+                              cursorColor: const Color(0xFF0169FE),
                               style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A2E), height: 1.3),
                               decoration: const InputDecoration(
                                 hintText: 'Type a message...',
@@ -1969,7 +1969,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             shape: BoxShape.circle,
                             boxShadow: (hasStagedImages || _messageController.text.isNotEmpty) && !uploading ? [
                               BoxShadow(
-                                color: const Color(0xFF00AEEF).withOpacity(0.35),
+                                color: const Color(0xFF0169FE).withOpacity(0.35),
                                 blurRadius: 10, offset: const Offset(0, 4),
                               )
                             ] : [],
@@ -2010,7 +2010,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     switch (status.toLowerCase()) {
       case 'available':
       case 'online':
-        return const Color(0xFF00AEEF);
+        return const Color(0xFF0169FE);
       case 'busy':
         return const Color(0xFFFFFF00);
       case 'super':
@@ -2117,9 +2117,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 border: Border(top: BorderSide(color: Colors.grey[200]!)),
               ),
               child: TabBar(
-                indicatorColor: const Color(0xFF00AEEF),
+                indicatorColor: const Color(0xFF0169FE),
                 indicatorSize: TabBarIndicatorSize.label,
-                labelColor: const Color(0xFF00AEEF),
+                labelColor: const Color(0xFF0169FE),
                 unselectedLabelColor: Colors.grey[400],
                 tabs: categories.map((cat) => Tab(icon: Icon(cat['icon'], size: 22))).toList(),
               ),
@@ -2150,13 +2150,13 @@ class _InputIconBtn extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: active ? const Color(0xFF00AEEF).withOpacity(0.12) : Colors.grey[100],
+              color: active ? const Color(0xFF0169FE).withOpacity(0.12) : Colors.grey[100],
               shape: BoxShape.circle,
             ),
             child: Center(
               child: emoji != null
                   ? Text(emoji!, style: const TextStyle(fontSize: 20))
-                  : Icon(icon, color: const Color(0xFF00AEEF), size: 20),
+                  : Icon(icon, color: const Color(0xFF0169FE), size: 20),
             ),
           ),
           if (badge != null)
@@ -2195,7 +2195,7 @@ class _TypingDots extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: const Text('...', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00AEEF))),
+      child: const Text('...', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0169FE))),
     );
   }
 }
@@ -2242,7 +2242,7 @@ class _PulseAvatarState extends State<_PulseAvatar> with SingleTickerProviderSta
             shape: BoxShape.circle,
             boxShadow: widget.isOnline ? [
               BoxShadow(
-                color: const Color(0xFF00AEEF).withOpacity(1.0 - _controller.value),
+                color: const Color(0xFF0169FE).withOpacity(1.0 - _controller.value),
                 blurRadius: _controller.value * 10,
                 spreadRadius: _controller.value * 5,
               )

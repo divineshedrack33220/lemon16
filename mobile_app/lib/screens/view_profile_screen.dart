@@ -117,7 +117,7 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: const Color(0xFF00AEEF),
+        backgroundColor: const Color(0xFF0169FE),
       ),
     );
   }
@@ -357,7 +357,7 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: index == _currentPhotoIndex
-                                ? const Color(0xFF00AEEF)
+                                ? const Color(0xFF0169FE)
                                 : Colors.grey[300],
                           ),
                         ),
@@ -428,7 +428,7 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: status == 'available'
-                          ? const Color(0xFF00AEEF)
+                          ? const Color(0xFF0169FE)
                           : status == 'busy'
                               ? Colors.yellow
                               : Colors.red,
@@ -472,7 +472,7 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
                     '✓ Verified',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF00AEEF),
+                      color: Color(0xFF0169FE),
                     ),
                   ),
                 ],
@@ -488,7 +488,7 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
             child: ElevatedButton(
               onPressed: isUnknown ? null : _startChat,
               style: ElevatedButton.styleFrom(
-                backgroundColor: isUnknown ? Colors.grey[200] : const Color(0xFF00AEEF),
+                backgroundColor: isUnknown ? Colors.grey[200] : const Color(0xFF0169FE),
                 foregroundColor: isUnknown ? Colors.grey : Colors.black,
                 disabledBackgroundColor: Colors.grey[200],
                 disabledForegroundColor: Colors.grey,

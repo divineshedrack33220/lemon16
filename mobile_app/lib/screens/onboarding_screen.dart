@@ -19,7 +19,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Connect Instantly',
       description: 'Experience lightning-fast messaging with a premium glassmorphic interface designed for clarity.',
       image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000&auto=format&fit=crop',
-      color: const Color(0xFF00AEEF),
+      color: const Color(0xFF0169FE),
     ),
     OnboardingData(
       title: 'Nearby Magic',
@@ -439,7 +439,7 @@ class _IllustrationPainter extends CustomPainter {
         Offset(center.dx - 55, center.dy + 50),
       ];
       final colors = [
-        const Color(0xFF00AEEF),
+        const Color(0xFF0169FE),
         const Color(0xFFFFFF00),
         const Color(0xFF6C63FF),
       ];

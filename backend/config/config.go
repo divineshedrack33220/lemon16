@@ -56,6 +56,9 @@ func Load() *Config {
 
 	if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
 		cfg.AllowedOrigins = strings.Split(envOrigins, ",")
+	} else if cfg.GinMode == "debug" {
+		cfg.AllowedOrigins = []string{"*"}
+		slog.Info("no ALLOWED_ORIGINS set, allowing all origins in debug mode")
 	}
 
 	return cfg

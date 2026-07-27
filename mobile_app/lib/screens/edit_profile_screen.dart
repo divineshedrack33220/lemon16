@@ -194,7 +194,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: const Color(0xFF00AEEF),
+        backgroundColor: const Color(0xFF0169FE),
       ),
     );
   }
@@ -221,7 +221,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF00AEEF)))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF0169FE)))
           : _error != null
               ? Center(
                   child: Padding(
@@ -260,12 +260,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: const Color(0xFF00AEEF),
+                                  color: const Color(0xFF0169FE),
                                   width: 2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF00AEEF).withOpacity(0.1),
+                                    color: const Color(0xFF0169FE).withOpacity(0.1),
                                     blurRadius: 0,
                                     spreadRadius: 4,
                                   ),
@@ -296,7 +296,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 width: 36,
                                 height: 36,
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFF00AEEF),
+                                  color: Color(0xFF0169FE),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -377,7 +377,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             Radio<String>(
                               value: gender,
                               groupValue: _gender,
-                              activeColor: const Color(0xFF00AEEF),
+                              activeColor: const Color(0xFF0169FE),
                               onChanged: (value) {
                                 setState(() => _gender = value);
                               },
@@ -406,7 +406,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           children: [
                             Checkbox(
                               value: isChecked,
-                              activeColor: const Color(0xFF00AEEF),
+                              activeColor: const Color(0xFF0169FE),
                               onChanged: (value) {
                                 setState(() {
                                   if (value == true) {
@@ -485,7 +485,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: ElevatedButton(
                         onPressed: _isSaving ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00AEEF),
+                          backgroundColor: const Color(0xFF0169FE),
                           foregroundColor: Colors.black,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -545,7 +545,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF00AEEF), width: 2),
+        borderSide: const BorderSide(color: Color(0xFF0169FE), width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
@@ -561,7 +561,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           color: Colors.grey[50],
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: hasPhoto ? const Color(0xFF00AEEF) : const Color(0xFFE0E0E0),
+            color: hasPhoto ? const Color(0xFF0169FE) : const Color(0xFFE0E0E0),
           ),
         ),
         child: Stack(
@@ -648,7 +648,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildPlaceholderAvatar() {
     return Container(
-      color: const Color(0xFF00AEEF).withOpacity(0.2),
+      color: const Color(0xFF0169FE).withOpacity(0.2),
       child: Center(
         child: Text(
           _nameController.text.isNotEmpty
@@ -657,7 +657,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           style: const TextStyle(
             fontSize: 48,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF00AEEF),
+            color: Color(0xFF0169FE),
           ),
         ),
       ),

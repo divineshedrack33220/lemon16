@@ -133,7 +133,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: const Color(0xFF00AEEF),
+        backgroundColor: const Color(0xFF0169FE),
       ),
     );
   }
@@ -179,10 +179,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF00AEEF) : Colors.grey[100],
+                      color: isSelected ? const Color(0xFF0169FE) : Colors.grey[100],
                       borderRadius: BorderRadius.circular(26),
                       border: Border.all(
-                        color: isSelected ? const Color(0xFF00AEEF) : Colors.grey[300]!,
+                        color: isSelected ? const Color(0xFF0169FE) : Colors.grey[300]!,
                       ),
                     ),
                     child: Text(
@@ -209,7 +209,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: _contentController.text.isNotEmpty
-                      ? const Color(0xFF00AEEF)
+                      ? const Color(0xFF0169FE)
                       : Colors.grey[300]!,
                 ),
               ),
@@ -260,10 +260,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF00AEEF) : Colors.grey[100],
+                        color: isSelected ? const Color(0xFF0169FE) : Colors.grey[100],
                         borderRadius: BorderRadius.circular(26),
                         border: Border.all(
-                          color: isSelected ? const Color(0xFF00AEEF) : Colors.grey[300]!,
+                          color: isSelected ? const Color(0xFF0169FE) : Colors.grey[300]!,
                         ),
                       ),
                       child: Text(
@@ -366,9 +366,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               child: ElevatedButton(
                 onPressed: _isFormValid && !_isPosting ? _submitPost : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00AEEF),
+                  backgroundColor: const Color(0xFF0169FE),
                   foregroundColor: Colors.black,
-                  disabledBackgroundColor: const Color(0xFF00AEEF).withOpacity(0.3),
+                  disabledBackgroundColor: const Color(0xFF0169FE).withOpacity(0.3),
                   disabledForegroundColor: Colors.black38,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(26),

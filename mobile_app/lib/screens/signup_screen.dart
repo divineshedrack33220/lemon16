@@ -316,7 +316,7 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _signup,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
+                backgroundColor: const Color(0xFF0169FE),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               ),
               child: _isLoading
@@ -369,7 +369,7 @@ class _SignupScreenState extends State<SignupScreen> {
               const Text("Already have an account? "),
               GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Text('Log in', style: TextStyle(color: Color(0xFF00AEEF), fontWeight: FontWeight.w600)),
+                child: const Text('Log in', style: TextStyle(color: Color(0xFF0169FE), fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -410,7 +410,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     color: const Color(0xFFF5F5F5),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: avatar != null ? const Color(0xFF00AEEF) : const Color(0xFFE0E0E0),
+                      color: avatar != null ? const Color(0xFF0169FE) : const Color(0xFFE0E0E0),
                       width: 4,
                     ),
                     boxShadow: [
@@ -425,7 +425,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       ? const Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 3,
-                            color: Color(0xFF00AEEF),
+                            color: Color(0xFF0169FE),
                           ),
                         )
                       : avatar != null
@@ -439,7 +439,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   Icon(
                                     Icons.add_a_photo_rounded,
                                     size: 40,
-                                    color: Color(0xFF00AEEF),
+                                    color: Color(0xFF0169FE),
                                   ),
                                   SizedBox(height: 8),
                                   Text(
@@ -460,7 +460,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: const BoxDecoration(
-                        color: Color(0xFF00AEEF),
+                        color: Color(0xFF0169FE),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -481,8 +481,8 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: avatar != null ? _nextScreen : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
-                disabledBackgroundColor: const Color(0xFF00AEEF).withOpacity(0.3),
+                backgroundColor: const Color(0xFF0169FE),
+                disabledBackgroundColor: const Color(0xFF0169FE).withOpacity(0.3),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
                 elevation: avatar != null ? 2 : 0,
               ),
@@ -532,7 +532,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   return Theme(
                     data: Theme.of(context).copyWith(
                       colorScheme: const ColorScheme.light(
-                        primary: Color(0xFF00AEEF),
+                        primary: Color(0xFF0169FE),
                         onPrimary: Colors.white,
                         onSurface: Colors.black,
                       ),
@@ -550,7 +550,7 @@ class _SignupScreenState extends State<SignupScreen> {
             },
             decoration: InputDecoration(
               hintText: 'Birth date (YYYY-MM-DD)',
-              suffixIcon: const Icon(Icons.calendar_today, color: Color(0xFF00AEEF)),
+              suffixIcon: const Icon(Icons.calendar_today, color: Color(0xFF0169FE)),
               filled: true,
               fillColor: const Color(0xFFF5F5F5),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -563,7 +563,7 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: _nextScreen,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
+                backgroundColor: const Color(0xFF0169FE),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               ),
               child: const Text('Next', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
@@ -610,7 +610,7 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: _nextScreen,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
+                backgroundColor: const Color(0xFF0169FE),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               ),
               child: const Text('Next', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
@@ -629,7 +629,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: _gender == value ? const Color(0xFF00AEEF) : const Color(0xFFF5F5F5),
+            color: _gender == value ? const Color(0xFF0169FE) : const Color(0xFFF5F5F5),
             border: Border.all(color: const Color(0xFFE0E0E0)),
             borderRadius: BorderRadius.circular(26),
           ),
@@ -655,7 +655,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: _interestedIn == value ? const Color(0xFF00AEEF) : const Color(0xFFF5F5F5),
+            color: _interestedIn == value ? const Color(0xFF0169FE) : const Color(0xFFF5F5F5),
             border: Border.all(color: const Color(0xFFE0E0E0)),
             borderRadius: BorderRadius.circular(26),
           ),
@@ -689,7 +689,7 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: () { _getLocation(); _nextScreen(); },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
+                backgroundColor: const Color(0xFF0169FE),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               ),
               child: const Text('Allow location', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
@@ -734,7 +734,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 return Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5F5F5),
-                    border: Border.all(color: const Color(0xFF00AEEF), width: 2),
+                    border: Border.all(color: const Color(0xFF0169FE), width: 2),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Stack(
@@ -742,12 +742,12 @@ class _SignupScreenState extends State<SignupScreen> {
                       if (mainAvatar != null)
                         ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(mainAvatar, fit: BoxFit.cover, width: double.infinity, height: double.infinity))
                       else
-                        const Center(child: Icon(Icons.person, color: Color(0xFF00AEEF))),
+                        const Center(child: Icon(Icons.person, color: Color(0xFF0169FE))),
                       Positioned(
                         top: 4, left: 4,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: const Color(0xFF00AEEF), borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(color: const Color(0xFF0169FE), borderRadius: BorderRadius.circular(8)),
                           child: const Text('Main', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
                       ),
@@ -765,7 +765,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: _uploadingSlots[index]
-                      ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00AEEF)))
+                      ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0169FE)))
                       : _uploadedPhotos[index] != null
                           ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.network(_uploadedPhotos[index]!, fit: BoxFit.cover))
                           : const Center(child: Icon(Icons.add_a_photo_outlined, color: Color(0xFF8E8E8E))),
@@ -780,8 +780,8 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: _nextScreen,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
-                disabledBackgroundColor: const Color(0xFF00AEEF).withOpacity(0.3),
+                backgroundColor: const Color(0xFF0169FE),
+                disabledBackgroundColor: const Color(0xFF0169FE).withOpacity(0.3),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               ),
               child: const Text('Next', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
@@ -817,7 +817,7 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: _nextScreen,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
+                backgroundColor: const Color(0xFF0169FE),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               ),
               child: const Text('Next', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
@@ -844,7 +844,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: Container(
                     height: 52,
                     decoration: BoxDecoration(
-                      color: _status == 'available' ? const Color(0xFF00AEEF) : const Color(0xFFF5F5F5),
+                      color: _status == 'available' ? const Color(0xFF0169FE) : const Color(0xFFF5F5F5),
                       border: Border.all(color: const Color(0xFFE0E0E0)),
                       borderRadius: BorderRadius.circular(26),
                     ),
@@ -859,7 +859,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: Container(
                     height: 52,
                     decoration: BoxDecoration(
-                      color: _status == 'busy' ? const Color(0xFF00AEEF) : const Color(0xFFF5F5F5),
+                      color: _status == 'busy' ? const Color(0xFF0169FE) : const Color(0xFFF5F5F5),
                       border: Border.all(color: const Color(0xFFE0E0E0)),
                       borderRadius: BorderRadius.circular(26),
                     ),
@@ -876,7 +876,7 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _completeOnboarding,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AEEF),
+                backgroundColor: const Color(0xFF0169FE),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               ),
               child: _isLoading
@@ -902,7 +902,7 @@ class _SignupScreenState extends State<SignupScreen> {
           children: List.generate(8, (index) => Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
             width: 8, height: 8,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: _currentScreen >= index ? const Color(0xFF00AEEF) : const Color(0xFFDDDDDD)),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: _currentScreen >= index ? const Color(0xFF0169FE) : const Color(0xFFDDDDDD)),
           )),
         ) : null,
       ),

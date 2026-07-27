@@ -44,11 +44,11 @@ class Lemon16App extends StatelessWidget {
         return NetworkWrapper(child: child!);
       },
       theme: ThemeData(
-        primaryColor: const Color(0xFF00AEEF),
+        primaryColor: const Color(0xFF0169FE),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00AEEF),
-          primary: const Color(0xFF00AEEF),
-          secondary: const Color(0xFF00AEEF),
+          seedColor: const Color(0xFF0169FE),
+          primary: const Color(0xFF0169FE),
+          secondary: const Color(0xFF0169FE),
         ),
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
@@ -59,7 +59,7 @@ class Lemon16App extends StatelessWidget {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00AEEF),
+            backgroundColor: const Color(0xFF0169FE),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(26),
@@ -78,7 +78,7 @@ class Lemon16App extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF00AEEF), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF0169FE), width: 2),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -94,11 +94,11 @@ class Lemon16App extends StatelessWidget {
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF00AEEF),
+            foregroundColor: const Color(0xFF0169FE),
           ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF00AEEF),
+          backgroundColor: Color(0xFF0169FE),
           foregroundColor: Colors.black,
         ),
         snackBarTheme: SnackBarThemeData(
@@ -106,7 +106,7 @@ class Lemon16App extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: const Color(0xFF00AEEF),
+          backgroundColor: const Color(0xFF0169FE),
           contentTextStyle: const TextStyle(color: Colors.white),
         ),
       ),

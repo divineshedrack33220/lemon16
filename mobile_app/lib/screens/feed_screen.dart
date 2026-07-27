@@ -548,14 +548,14 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
 
   Widget _buildStoryPlaceholder(String name) {
     return Container(
-      color: const Color(0xFF00AEEF).withOpacity(0.1),
+      color: const Color(0xFF0169FE).withOpacity(0.1),
       alignment: Alignment.center,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : '?',
         style: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF00AEEF),
+          color: Color(0xFF0169FE),
         ),
       ),
     );
@@ -574,7 +574,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
           IconButton(
             icon: Icon(
               _isRadarEnabled ? Icons.radar : Icons.radar_outlined,
-              color: _isRadarEnabled ? const Color(0xFF00AEEF) : Colors.grey,
+              color: _isRadarEnabled ? const Color(0xFF0169FE) : Colors.grey,
             ),
             onPressed: () {
               setState(() => _isRadarEnabled = !_isRadarEnabled);
@@ -618,7 +618,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     Color dotColor;
     switch (status['class']) {
       case 'available':
-        dotColor = const Color(0xFF00AEEF);
+        dotColor = const Color(0xFF0169FE);
         break;
       case 'busy':
         dotColor = Colors.yellow;
@@ -700,10 +700,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
           
           switch (user.userStatus) {
             case 'available':
-              startColor = const Color(0xFF00AEEF);
+              startColor = const Color(0xFF0169FE);
               endColor = Colors.blue[200]!;
               statusIcon = Icons.flash_on;
-              statusIconColor = const Color(0xFF00AEEF);
+              statusIconColor = const Color(0xFF0169FE);
               break;
             case 'busy':
               startColor = Colors.amber;
@@ -724,10 +724,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
               statusIconColor = Colors.purple;
               break;
             default:
-              startColor = const Color(0xFF00AEEF);
+              startColor = const Color(0xFF0169FE);
               endColor = Colors.blue[200]!;
               statusIcon = Icons.flash_on;
-              statusIconColor = const Color(0xFF00AEEF);
+              statusIconColor = const Color(0xFF0169FE);
           }
 
           return GestureDetector(
@@ -873,7 +873,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     
     return RefreshIndicator(
       onRefresh: _onRefresh,
-      color: const Color(0xFF00AEEF),
+      color: const Color(0xFF0169FE),
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
@@ -996,13 +996,13 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
           color: post.userStatus == 'super' ? const Color(0xFFF0F7FF) : Colors.grey[50],
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: post.userStatus == 'super' ? const Color(0xFF00AEEF).withOpacity(0.3) : Colors.grey[200]!,
+            color: post.userStatus == 'super' ? const Color(0xFF0169FE).withOpacity(0.3) : Colors.grey[200]!,
             width: post.userStatus == 'super' ? 2 : 1,
           ),
           boxShadow: [
             if (post.userStatus == 'super')
               BoxShadow(
-                color: const Color(0xFF00AEEF).withOpacity(0.1),
+                color: const Color(0xFF0169FE).withOpacity(0.1),
                 blurRadius: 15,
                 spreadRadius: 2,
               ),
@@ -1073,7 +1073,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                               '🔵 Live now',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF00AEEF),
+                                color: Color(0xFF0169FE),
                               ),
                             ),
                           ],
@@ -1178,14 +1178,14 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
 
   Widget _buildPlaceholderAvatar(String name) {
     return Container(
-      color: const Color(0xFF00AEEF).withOpacity(0.2),
+      color: const Color(0xFF0169FE).withOpacity(0.2),
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: const TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF00AEEF),
+            color: Color(0xFF0169FE),
           ),
         ),
       ),
@@ -1202,11 +1202,11 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: const Color(0xFF00AEEF),
+            color: const Color(0xFF0169FE),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF00AEEF).withOpacity(0.3),
+                color: const Color(0xFF0169FE).withOpacity(0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
               ),
@@ -1294,11 +1294,11 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                             width: 30,
                             height: 30,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF00AEEF),
+                              color: const Color(0xFF0169FE),
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF00AEEF).withOpacity(0.8),
+                                  color: const Color(0xFF0169FE).withOpacity(0.8),
                                   blurRadius: 20,
                                 ),
                               ],
@@ -1545,7 +1545,7 @@ class _AnimatedRadarPainter extends CustomPainter {
     
     // Static Crosshairs
     final linePaint = Paint()
-      ..color = const Color(0xFF00AEEF).withOpacity(0.2)
+      ..color = const Color(0xFF0169FE).withOpacity(0.2)
       ..strokeWidth = 1;
       
     // 4 lines
@@ -1563,7 +1563,7 @@ class _AnimatedRadarPainter extends CustomPainter {
       double opacity = 1.0 - offset;
       
       final wavePaint = Paint()
-        ..color = const Color(0xFF00AEEF).withOpacity(opacity * 0.8)
+        ..color = const Color(0xFF0169FE).withOpacity(opacity * 0.8)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0;
         
@@ -1616,7 +1616,7 @@ class _PulseAvatarState extends State<_PulseAvatar> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) {
-    final pulseColor = widget.isSuper ? Colors.deepPurpleAccent : const Color(0xFF00AEEF);
+    final pulseColor = widget.isSuper ? Colors.deepPurpleAccent : const Color(0xFF0169FE);
     final effectiveImageUrl = (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
         ? widget.imageUrl
         : (widget.userPhotos.isNotEmpty ? widget.userPhotos.first : null);
@@ -1650,14 +1650,14 @@ class _PulseAvatarState extends State<_PulseAvatar> with SingleTickerProviderSta
 
   Widget _buildPlaceholderAvatar(String name) {
     return Container(
-      color: const Color(0xFF00AEEF).withOpacity(0.2),
+      color: const Color(0xFF0169FE).withOpacity(0.2),
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF00AEEF),
+            color: Color(0xFF0169FE),
           ),
         ),
       ),
