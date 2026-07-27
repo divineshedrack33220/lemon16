@@ -255,6 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Image.network(
                                   'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Google_Favicon_2025.svg/250px-Google_Favicon_2025.svg.png',
@@ -262,9 +263,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 20,
                                 ),
                                 const SizedBox(width: 12),
-                                const Text(
-                                  'Continue with Google',
-                                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black),
+                                const Flexible(
+                                  child: Text(
+                                    'Continue with Google',
+                                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ],
                             ),
